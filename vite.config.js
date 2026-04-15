@@ -8,7 +8,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  // './' base is required for the Electron build so all asset URLs are
-  // relative and work correctly when loaded via file:// protocol.
-  base: './',
+  // Use root base for Vercel/Web, and relative base for Electron
+  base: process.env.VERCEL ? '/' : './',
 })

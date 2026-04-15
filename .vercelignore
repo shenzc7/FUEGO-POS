@@ -1,0 +1,20 @@
+# Vercel Deployment Ignore List
+# Prevents Vercel from trying to process local-only or large system files
+
+# Local Backend & Database
+server/
+fuego.db*
+*.sqlite
+
+# Electron specifics
+electron/
+electron-builder.yml
+dist/
+release/
+
+# Development / System
+.claude/
+node_modules/
+.DS_Store
+*.md
+!README.md
