@@ -35,12 +35,23 @@ const DEFAULT_DISCOUNT = {
   value: 0,
 };
 
-const API_HOST =
-  typeof window !== 'undefined' && window.location.protocol !== 'file:' && window.location.hostname
-    ? window.location.hostname
-    : '127.0.0.1';
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (() => {
+    if (typeof window === 'undefined') {
+      return '/api';
+    }
 
-const API_URL = import.meta.env.VITE_API_URL || `http://${API_HOST}:3001`;
+    if (window.location.protocol === 'file:') {
+      return 'http://127.0.0.1:3001';
+    }
+
+    if (import.meta.env.DEV) {
+      return `http://${window.location.hostname || '127.0.0.1'}:3001`;
+    }
+
+    return '/api';
+  })();
 
 const createDefaultSettings = () => ({
   ...DEFAULT_SETTINGS,
