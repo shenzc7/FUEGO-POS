@@ -558,19 +558,30 @@ const sanitizeLedgerAdjustment = (payload = {}) => {
     throw createHttpError(400, 'Adjustment amount must be greater than zero.');
   }
 
-  if (!source) {
+  const type = payload.type === 'Transfer' ? 'Transfer' : (payload.type === 'Outflow' ? 'Outflow' : 'Inflow');
+
+  if (!source && type !== 'Transfer') {
     throw createHttpError(400, 'Adjustment source is required.');
   }
 
-  return {
+  const result = {
     id: toOptionalText(payload.id, createLedgerAdjustmentId()),
     timestamp: toOptionalText(payload.timestamp, new Date().toISOString()),
     account: payload.account === 'Bank' ? 'Bank' : payload.account === 'UPI' ? 'UPI' : 'Cash',
-    type: payload.type === 'Outflow' ? 'Outflow' : 'Inflow',
+    type,
     amount,
-    source,
+    source: source || (type === 'Transfer' ? `Transfer: ${payload.account} → ${payload.toAccount}` : ''),
     note: toOptionalNullableText(payload.note),
   };
+
+  if (type === 'Transfer') {
+    result.toAccount = payload.toAccount === 'Bank' ? 'Bank' : payload.toAccount === 'UPI' ? 'UPI' : 'Cash';
+    if (result.account === result.toAccount) {
+      throw createHttpError(400, 'Source and destination accounts must be different.');
+    }
+  }
+
+  return result;
 };
 
 const persistOrder = (order) => {
@@ -975,24 +986,63 @@ fastify.get('/ledger-adjustments', async () => {
 fastify.post('/ledger-adjustments', async (request, reply) => {
   const adjustment = sanitizeLedgerAdjustment(request.body ?? {});
 
-  if (statements.selectLedgerAdjustmentById.get(adjustment.id)) {
-    throw createHttpError(409, `Ledger adjustment "${adjustment.id}" already exists.`);
+  if (adjustment.type === 'Transfer') {
+    let savedAdjustments = [];
+    
+    db.transaction(() => {
+      const outflowId = createLedgerAdjustmentId();
+      const inflowId = createLedgerAdjustmentId();
+      
+      statements.insertLedgerAdjustment.run(
+        outflowId,
+        adjustment.timestamp,
+        adjustment.account,
+        'Outflow',
+        adjustment.amount,
+        adjustment.source,
+        adjustment.note,
+      );
+
+      statements.insertLedgerAdjustment.run(
+        inflowId,
+        adjustment.timestamp,
+        adjustment.toAccount,
+        'Inflow',
+        adjustment.amount,
+        adjustment.source,
+        adjustment.note,
+      );
+      
+      savedAdjustments = [
+        mapLedgerAdjustment(statements.selectLedgerAdjustmentById.get(outflowId)),
+        mapLedgerAdjustment(statements.selectLedgerAdjustmentById.get(inflowId)),
+      ];
+    })();
+
+    reply.code(201).send({
+      success: true,
+      adjustments: savedAdjustments,
+    });
+  } else {
+    if (statements.selectLedgerAdjustmentById.get(adjustment.id)) {
+      throw createHttpError(409, `Ledger adjustment "${adjustment.id}" already exists.`);
+    }
+
+    statements.insertLedgerAdjustment.run(
+      adjustment.id,
+      adjustment.timestamp,
+      adjustment.account,
+      adjustment.type,
+      adjustment.amount,
+      adjustment.source,
+      adjustment.note,
+    );
+
+    reply.code(201).send({
+      success: true,
+      adjustment: mapLedgerAdjustment(statements.selectLedgerAdjustmentById.get(adjustment.id)),
+    });
   }
-
-  statements.insertLedgerAdjustment.run(
-    adjustment.id,
-    adjustment.timestamp,
-    adjustment.account,
-    adjustment.type,
-    adjustment.amount,
-    adjustment.source,
-    adjustment.note,
-  );
-
-  reply.code(201).send({
-    success: true,
-    adjustment: mapLedgerAdjustment(statements.selectLedgerAdjustmentById.get(adjustment.id)),
-  });
 });
 
 fastify.delete('/ledger-adjustments/:id', async (request) => {
