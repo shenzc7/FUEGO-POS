@@ -1,0 +1,62 @@
+appId: com.fuego.pos
+productName: Fuego POS
+copyright: Copyright © 2024 Fuego
+
+# ── Directory layout ──────────────────────────────────────────────────────────
+directories:
+  output: release
+  buildResources: public
+
+# ── Files bundled inside the app ──────────────────────────────────────────────
+files:
+  - dist/**          # Vite-built frontend
+  - electron/**      # Electron main process
+  - package.json
+
+# ── Server folder copied as an unpacked external resource ─────────────────────
+# This lets the Node.js backend run from a real filesystem path (not ASAR).
+# Native modules (better-sqlite3) CANNOT be inside ASAR.
+extraResources:
+  - from: server
+    to: server
+    filter:
+      - "**/*"
+      - "!node_modules/**"   # Server uses root node_modules (rebuilt by electron-builder)
+      - "!fuego.db*"         # Never ship a dev database
+
+# Unpack native addons so they can be loaded by the spawned Node.js subprocess.
+asarUnpack:
+  - "node_modules/better-sqlite3/**"
+  - "node_modules/bindings/**"
+  - "node_modules/file-uri-to-path/**"
+
+# ── Windows target ────────────────────────────────────────────────────────────
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # icon: public/icon.ico   # Uncomment and provide a 256x256 .ico file to use a custom icon
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Fuego POS
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false   # Preserve the SQLite database on uninstall
+
+# ── Rebuild native modules for the packaged Electron version ─────────────────
+npmRebuild: true
+buildDependenciesFromSource: false
+
+# ── macOS (optional, for future use) ─────────────────────────────────────────
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.business

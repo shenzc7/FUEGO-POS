@@ -1,0 +1,17 @@
+{
+  "name": "fuego-backend",
+  "version": "1.0.0",
+  "description": "Local-First SQLite Backend for Fuego POS",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "better-sqlite3": "^11.5.0",
+    "dotenv": "^16.4.5"
+  }
+}
