@@ -515,149 +515,124 @@ const seedDatabase = async () => {
     ledger: Number(ledgerCountRows[0]?.count ?? 0),
   };
 
-  if (counts.menu > 0 || counts.orders > 0 || counts.settings > 0 || counts.ledger > 0) {
-    return;
-  }
-
   const seed = await loadSeedData();
-  const queries = [];
 
-  await sql.transaction((txn) => {
-    for (const item of seed.menuItems ?? []) {
-      const menuItem = sanitizeMenuItem(item);
-      queries.push(
-        txn`
-          INSERT INTO menu_items (id, name, price, category, active)
-          VALUES (
-            ${menuItem.id},
-            ${menuItem.name},
-            ${menuItem.price},
-            ${menuItem.category},
-            ${menuItem.active}
-          )
-          ON CONFLICT (id) DO NOTHING
-        `,
-      );
-    }
-
-    for (const order of seed.orders ?? []) {
-      const normalizedOrder = {
-        id: order.id,
-        subtotal: toSafePositiveNumber(order.subtotal, 0),
-        discount: toSafePositiveNumber(order.discount, 0),
-        gst: toSafePositiveNumber(order.gst, 0),
-        total: toSafePositiveNumber(order.total, 0),
-        tableNumber: toOptionalNullableText(order.tableNumber),
-        customerName: toOptionalNullableText(order.customerName),
-        customerPhone: toOptionalNullableText(order.customerPhone),
-        note: toOptionalNullableText(order.note),
-        timestamp: toOptionalText(order.timestamp, new Date().toISOString()),
-        payment: normalizePayment(order.payment, order.total),
-        receiptSettings: normalizeReceiptSettings(order.receiptSettings),
-        items: sanitizeOrderItems(order.items ?? []),
-      };
-
-      queries.push(
-        txn`
-          INSERT INTO orders (
-            id,
-            subtotal,
-            discount,
-            gst,
-            total,
-            table_number,
-            customer_name,
-            customer_phone,
-            note,
-            timestamp,
-            payment_method,
-            payment_status,
-            payment_json,
-            receipt_settings_json
-          )
-          VALUES (
-            ${normalizedOrder.id},
-            ${normalizedOrder.subtotal},
-            ${normalizedOrder.discount},
-            ${normalizedOrder.gst},
-            ${normalizedOrder.total},
-            ${normalizedOrder.tableNumber},
-            ${normalizedOrder.customerName},
-            ${normalizedOrder.customerPhone},
-            ${normalizedOrder.note},
-            ${normalizedOrder.timestamp},
-            ${normalizedOrder.payment.method},
-            ${normalizedOrder.payment.status},
-            ${toJsonValue(normalizedOrder.payment)}::jsonb,
-            ${toJsonValue(normalizedOrder.receiptSettings)}::jsonb
-          )
-          ON CONFLICT (id) DO NOTHING
-        `,
-      );
-
-      for (const item of normalizedOrder.items) {
+  // Seed Menu Items if empty
+  if (counts.menu === 0 && seed.menuItems?.length > 0) {
+    await sql.transaction((txn) => {
+      const queries = [];
+      for (const item of seed.menuItems) {
+        const menuItem = sanitizeMenuItem(item);
         queries.push(
           txn`
-            INSERT INTO order_items (order_id, item_id, name, price, quantity, note)
+            INSERT INTO menu_items (id, name, price, category, active)
             VALUES (
-              ${normalizedOrder.id},
-              ${item.itemId},
-              ${item.name},
-              ${item.price},
-              ${item.quantity},
-              ${item.note}
+              ${menuItem.id},
+              ${menuItem.name},
+              ${menuItem.price},
+              ${menuItem.category},
+              ${menuItem.active}
             )
+            ON CONFLICT (id) DO NOTHING
           `,
         );
       }
-    }
+      return queries;
+    });
+  }
 
-    for (const [key, value] of Object.entries(seed.settings ?? {})) {
-      queries.push(
-        txn`
-          INSERT INTO settings (key, value)
-          VALUES (${key}, ${toJsonValue(value)}::jsonb)
-          ON CONFLICT (key) DO NOTHING
-        `,
-      );
-    }
+  // Seed Orders if empty
+  if (counts.orders === 0 && seed.orders?.length > 0) {
+    await sql.transaction((txn) => {
+      const queries = [];
+      for (const order of seed.orders) {
+        const normalizedOrder = {
+          id: order.id,
+          subtotal: toSafePositiveNumber(order.subtotal, 0),
+          discount: toSafePositiveNumber(order.discount, 0),
+          gst: toSafePositiveNumber(order.gst, 0),
+          total: toSafePositiveNumber(order.total, 0),
+          tableNumber: toOptionalNullableText(order.tableNumber),
+          customerName: toOptionalNullableText(order.customerName),
+          customerPhone: toOptionalNullableText(order.customerPhone),
+          note: toOptionalNullableText(order.note),
+          timestamp: toOptionalText(order.timestamp, new Date().toISOString()),
+          payment: normalizePayment(order.payment, order.total),
+          receiptSettings: normalizeReceiptSettings(order.receiptSettings),
+          items: sanitizeOrderItems(order.items ?? []),
+        };
 
-    for (const adjustment of seed.ledgerAdjustments ?? []) {
-      const normalized = adjustment.type === 'Transfer'
-        ? null
-        : {
-            id: adjustment.id,
-            timestamp: adjustment.timestamp,
-            account: adjustment.account,
-            type: adjustment.type,
-            amount: adjustment.amount,
-            source: adjustment.source,
-            note: adjustment.note,
-          };
+        queries.push(
+          txn`
+            INSERT INTO orders (
+              id, subtotal, discount, gst, total, table_number, customer_name,
+              customer_phone, note, timestamp, payment_method, payment_status,
+              payment_json, receipt_settings_json
+            )
+            VALUES (
+              ${normalizedOrder.id}, ${normalizedOrder.subtotal}, ${normalizedOrder.discount},
+              ${normalizedOrder.gst}, ${normalizedOrder.total}, ${normalizedOrder.tableNumber},
+              ${normalizedOrder.customerName}, ${normalizedOrder.customerPhone}, ${normalizedOrder.note},
+              ${normalizedOrder.timestamp}, ${normalizedOrder.payment.method}, ${normalizedOrder.payment.status},
+              ${toJsonValue(normalizedOrder.payment)}::jsonb, ${toJsonValue(normalizedOrder.receiptSettings)}::jsonb
+            )
+            ON CONFLICT (id) DO NOTHING
+          `,
+        );
 
-      if (!normalized) {
-        continue;
+        for (const item of normalizedOrder.items) {
+          queries.push(
+            txn`
+              INSERT INTO order_items (order_id, item_id, name, price, quantity, note)
+              VALUES (
+                ${normalizedOrder.id}, ${item.itemId}, ${item.name},
+                ${item.price}, ${item.quantity}, ${item.note}
+              )
+            `,
+          );
+        }
       }
+      return queries;
+    });
+  }
 
-      queries.push(
-        txn`
-          INSERT INTO ledger_adjustments (id, timestamp, account, type, amount, source, note)
-          VALUES (
-            ${normalized.id},
-            ${normalized.timestamp},
-            ${normalized.account},
-            ${normalized.type},
-            ${normalized.amount},
-            ${normalized.source},
-            ${normalized.note}
-          )
-          ON CONFLICT (id) DO NOTHING
-        `,
-      );
-    }
+  // Seed Settings if empty
+  if (counts.settings === 0 && seed.settings && Object.keys(seed.settings).length > 0) {
+    await sql.transaction((txn) => {
+      const queries = [];
+      for (const [key, value] of Object.entries(seed.settings)) {
+        queries.push(
+          txn`
+            INSERT INTO settings (key, value)
+            VALUES (${toOptionalText(key, '')}, ${toJsonValue(value)}::jsonb)
+            ON CONFLICT (key) DO NOTHING
+          `,
+        );
+      }
+      return queries;
+    });
+  }
 
-    return queries;
-  });
+  // Seed Ledger if empty
+  if (counts.ledger === 0 && seed.ledgerAdjustments?.length > 0) {
+    await sql.transaction((txn) => {
+      const queries = [];
+      for (const adj of seed.ledgerAdjustments) {
+        const normalized = sanitizeLedgerAdjustment(adj);
+        queries.push(
+          txn`
+            INSERT INTO ledger_adjustments (id, timestamp, account, type, amount, source, note)
+            VALUES (
+              ${normalized.id}, ${normalized.timestamp}, ${normalized.account},
+              ${normalized.type}, ${normalized.amount}, ${normalized.source}, ${normalized.note}
+            )
+            ON CONFLICT (id) DO NOTHING
+          `,
+        );
+      }
+      return queries;
+    });
+  }
 };
 
 export const ensureReady = async () => {
@@ -697,32 +672,9 @@ const hydrateOrders = async (rows) => {
   return rows.map((row) => serializeOrder(row, itemsByOrderId.get(row.id) ?? []));
 };
 
-const readState = async () => {
-  const versions = await listStateVersions();
 
-  if (versions.length === 0) {
-    const initialState = await buildInitialState();
-    await writeState(initialState);
-    return initialState;
-  }
 
-  const contents = await readBlobText(versions[0]);
-  const currentState = normalizeState(parseJson(contents, {}));
-
-  // Auto-seed menu items if the current cloud state has none
-  if (currentState.menuItems.length === 0) {
-    const seed = await loadSeedData();
-    if (seed.menuItems && seed.menuItems.length > 0) {
-      currentState.menuItems = sortMenuItems(seed.menuItems.map((item) => sanitizeMenuItem(item)));
-      // Persist the seeded items back to the cloud
-      await writeState(currentState);
-    }
-  }
-
-  return currentState;
-};
-
-const getOrderById = async (id) => {
+export const getOrderById = async (id) => {
   const sql = getSql();
   const rows = await sql.query(`${ORDER_SELECT} WHERE id = $1`, [id]);
 
@@ -1199,6 +1151,12 @@ export const createLedgerAdjustment = async (payload) => {
   };
 };
 
+export const getLedgerAdjustmentById = async (id) => {
+  const sql = getSql();
+  const rows = await sql`SELECT id, timestamp, account, type, amount, source, note FROM ledger_adjustments WHERE id = ${id}`;
+  return rows.length > 0 ? mapLedgerAdjustment(rows[0]) : null;
+};
+
 export const deleteLedgerAdjustment = async (id) => {
   const sql = getSql();
   const rows = await sql`DELETE FROM ledger_adjustments WHERE id = ${id} RETURNING id`;
@@ -1217,7 +1175,11 @@ export const resetDatabase = async () => {
     txn`DELETE FROM orders`,
     txn`DELETE FROM settings`,
     txn`DELETE FROM ledger_adjustments`,
+    txn`DELETE FROM menu_items`,
   ]);
+
+  // Re-seed the database after clearing
+  await seedDatabase();
 
   return { success: true };
 };

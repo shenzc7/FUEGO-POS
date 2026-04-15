@@ -15,6 +15,9 @@ import {
   saveSettings,
   updateMenuItem,
   updateOrder,
+  getOrderById,
+  getLedgerAdjustmentById,
+  getStatus,
 } from './_lib/pos-service.js';
 import { createHttpError, handleError, methodNotAllowed, readJson, sendJson } from './_lib/http.js';
 
@@ -29,8 +32,23 @@ const getRequestUrl = (request) => {
 };
 
 const getSegments = (request) => {
-  const pathname = getRequestUrl(request).pathname.replace(/^\/api\/?/, '');
-  return pathname ? pathname.split('/').filter(Boolean).map(decodeURIComponent) : [];
+  let segments = [];
+
+  // 1. Try Vercel's native query-based segments
+  if (Array.isArray(request.query?.route)) {
+    segments = request.query.route;
+  } else {
+    // 2. Fallback: Parse from URL
+    const pathname = getRequestUrl(request).pathname.replace(/^\/api\/?/, '');
+    segments = pathname ? pathname.split('/').filter(Boolean).map(decodeURIComponent) : [];
+  }
+
+  // 3. Sanitize: Remove 'api' if it was captured as a segment
+  if (segments[0] === 'api') {
+    segments = segments.slice(1);
+  }
+
+  return segments;
 };
 
 export default async function handler(request, response) {
@@ -39,6 +57,14 @@ export default async function handler(request, response) {
 
     const segments = getSegments(request);
     const [resource, id, action] = segments;
+
+    // Root status handler (migrated from index.js)
+    if (segments.length === 0) {
+      if (request.method !== 'GET') {
+        return methodNotAllowed(response, ['GET']);
+      }
+      return sendJson(response, await getStatus());
+    }
 
     if (resource === 'menu' && segments.length === 1) {
       if (request.method === 'GET') {
@@ -84,6 +110,14 @@ export default async function handler(request, response) {
     }
 
     if (resource === 'orders' && segments.length === 2) {
+      if (request.method === 'GET') {
+        const order = await getOrderById(id);
+        if (!order) {
+          throw createHttpError(404, `Order "${id}" was not found.`);
+        }
+        return sendJson(response, order);
+      }
+
       if (request.method === 'PATCH') {
         return sendJson(response, await updateOrder(id, await readJson(request)));
       }
@@ -92,7 +126,7 @@ export default async function handler(request, response) {
         return sendJson(response, await deleteOrder(id));
       }
 
-      return methodNotAllowed(response, ['PATCH', 'DELETE']);
+      return methodNotAllowed(response, ['GET', 'PATCH', 'DELETE']);
     }
 
     if (resource === 'settings' && segments.length === 1) {
@@ -120,11 +154,19 @@ export default async function handler(request, response) {
     }
 
     if (resource === 'ledger-adjustments' && segments.length === 2) {
+      if (request.method === 'GET') {
+        const adjustment = await getLedgerAdjustmentById(id);
+        if (!adjustment) {
+          throw createHttpError(404, `Ledger adjustment "${id}" was not found.`);
+        }
+        return sendJson(response, adjustment);
+      }
+
       if (request.method === 'DELETE') {
         return sendJson(response, await deleteLedgerAdjustment(id));
       }
 
-      return methodNotAllowed(response, ['DELETE']);
+      return methodNotAllowed(response, ['GET', 'DELETE']);
     }
 
     if (resource === 'finance' && id === 'summary' && segments.length === 2) {
@@ -147,7 +189,7 @@ export default async function handler(request, response) {
       throw createHttpError(404, `Unknown API route "${segments.join('/')}".`);
     }
 
-    throw createHttpError(404, 'Unknown API route.');
+    throw createHttpError(404, `Unknown API route: ${request.method} ${request.url}`);
   } catch (error) {
     return handleError(response, error);
   }
