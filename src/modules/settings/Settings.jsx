@@ -369,6 +369,7 @@ export const Settings = () => {
                             type="number"
                             value={draftSettings.gstRate || 0}
                             onChange={e => handleInputChange('gstRate', Number(e.target.value))}
+                            onWheel={(e) => e.target.blur()}
                             className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-xl px-4 py-3 text-[var(--fuego-text)] focus:border-fuego-orange outline-none font-bold font-mono"
                           />
                         </FormField>

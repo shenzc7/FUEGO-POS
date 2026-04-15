@@ -41,10 +41,13 @@ export const PaymentModal = ({ isOpen, onClose }) => {
   const [wasSettlement, setWasSettlement] = useState(Boolean(settlementOrder));
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [splitRows, setSplitRows] = useState(() => [
-    makeSplitRow('Cash', displayTotal),
-    makeSplitRow('UPI', 0),
-  ]);
+  const [splitRows, setSplitRows] = useState(() => {
+    const half = +(displayTotal / 2).toFixed(2);
+    return [
+      makeSplitRow('Cash', half),
+      makeSplitRow('UPI', +(displayTotal - half).toFixed(2)),
+    ];
+  });
 
   const splitTotal = useMemo(
     () => splitRows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0),
@@ -53,12 +56,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
   const splitRemaining = +(displayTotal - splitTotal).toFixed(2);
   const splitIsBalanced = Math.abs(splitRemaining) < 0.02;
 
-  const canSubmit = useMemo(() => {
-    if (method === 'Split') {
-      return splitRows.some((r) => parseFloat(r.amount) > 0);
-    }
-    return parseFloat(amountPaid) > 0;
-  }, [method, splitRows, amountPaid]);
+  const canSubmit = true;
 
   const availableAccounts = PAYMENT_ACCOUNTS.filter((a) => a.type === method);
   const resolvedSelectedAccount = availableAccounts.some((a) => a.id === selectedAccount)
@@ -115,7 +113,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
           due: Math.max(0, displayTotal - splitTotal),
         };
       } else {
-        const paid = parseFloat(amountPaid || 0);
+        const paid = parseFloat(amountPaid) || 0;
         const appliedAmount = Math.min(displayTotal, paid);
         finalPaymentDetails = {
           method,
@@ -215,7 +213,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black text-[var(--fuego-text-muted)] uppercase tracking-widest">Remaining</p>
-                        <p className={cn("text-lg font-bold", splitRemaining > 0 ? "text-fuego-orange" : "text-[var(--fuego-text-muted)]")}>
+                        <p className={cn("text-lg font-bold", splitRemaining > 0 ? "text-fuego-orange" : "text-emerald-500")}>
                           ₹{Math.max(0, splitRemaining).toFixed(2)}
                         </p>
                       </div>
@@ -303,6 +301,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                               type="number"
                               value={row.amount}
                               onChange={(e) => updateSplitField(idx, 'amount', e.target.value)}
+                              onWheel={(e) => e.target.blur()}
                               placeholder="0.00"
                               className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-2xl py-4 pl-12 pr-6 text-2xl font-bold font-mono focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] transition-all placeholder:opacity-20"
                             />
@@ -336,7 +335,8 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                     <div 
                       onClick={() => {
                         setIsFullPayment(!isFullPayment);
-                        if (!isFullPayment) setAmountPaid(displayTotal);
+                        if (isFullPayment) setAmountPaid('');
+                        else setAmountPaid(displayTotal);
                       }}
                       className={cn(
                         "group p-8 rounded-[2.5rem] border-2 transition-all duration-500 cursor-pointer flex flex-col items-center gap-4 text-center shadow-sm",
@@ -375,6 +375,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                                 type="number"
                                 value={amountPaid}
                                 onChange={(e) => setAmountPaid(e.target.value)}
+                                onWheel={(e) => e.target.blur()}
                                 placeholder="0.00"
                                 className="w-full bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-[2rem] py-8 pl-14 pr-8 text-5xl font-black font-mono focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] transition-all placeholder:opacity-10 shadow-inner"
                                 autoFocus
@@ -427,9 +428,7 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                   disabled={isProcessing || !canSubmit}
                   className={cn(
                     "group relative w-full py-6 rounded-3xl font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden shadow-xl",
-                    method === 'Split' && !splitIsBalanced 
-                      ? "bg-[var(--fuego-border)] text-[var(--fuego-text-muted)] cursor-not-allowed" 
-                      : "bg-fuego-orange text-white hover:brightness-110 active:scale-95 shadow-fuego-orange/20"
+                    "bg-fuego-orange text-white hover:brightness-110 active:scale-95 shadow-fuego-orange/20"
                   )}
                 >
                   <Motion.div 
@@ -440,9 +439,13 @@ export const PaymentModal = ({ isOpen, onClose }) => {
                   ) : (
                     <>
                       <span>
-                        {method === 'Split' && !splitIsBalanced 
-                          ? `Pay Partial (₹${splitTotal.toFixed(2)})` 
-                          : 'Finalize Payment'}
+                        {method === 'Split' ? (
+                          splitIsBalanced ? 'Finalize Payment' : (splitTotal === 0 ? 'Mark as Receivable' : 'Finalize Partial Payment')
+                        ) : (
+                          (parseFloat(amountPaid) || 0) >= displayTotal 
+                            ? 'Finalize Payment' 
+                            : ((parseFloat(amountPaid) || 0) === 0 ? 'Mark as Receivable' : 'Finalize Partial Payment')
+                        )}
                       </span>
                       <ChevronRight size={18} className="translate-y-px group-hover:translate-x-1 transition-transform" />
                     </>

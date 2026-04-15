@@ -43,15 +43,23 @@ export const POSScreen = () => {
       <div className="flex-1 flex flex-col bg-[var(--fuego-bg)] p-6 overflow-hidden">
         {/* Header & Search */}
         <div className="flex items-center justify-between mb-8">
-          <div className="relative w-96 text-[var(--fuego-text)]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)]" size={18} />
+          <div className="group relative w-[520px]">
+            <Search 
+              className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] group-focus-within:text-fuego-orange transition-all duration-300 transform group-focus-within:scale-110" 
+              size={18} 
+              strokeWidth={3} 
+            />
             <input 
               type="text" 
-              placeholder="Search items..."
-              className="w-full bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-fuego-orange transition-colors text-[var(--fuego-text)]"
+              placeholder="COLLECTION SEARCH..."
+              className="search-bar-premium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-30 group-focus-within:opacity-60 transition-opacity">
+              <span className="text-[10px] font-black border border-[var(--fuego-text-muted)] rounded-md px-1.5 py-0.5">⌘</span>
+              <span className="text-[10px] font-black border border-[var(--fuego-text-muted)] rounded-md px-1.5 py-0.5">K</span>
+            </div>
           </div>
           
           {parkedOrders.length > 0 && (
@@ -66,14 +74,14 @@ export const POSScreen = () => {
         </div>
 
         {/* Categories */}
-        <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-4 mb-10 overflow-x-auto pb-4 no-scrollbar">
           <button
             onClick={() => setSelectedCategory("ALL")}
             className={cn(
-              "px-6 py-2.5 rounded-xl border whitespace-nowrap transition-all uppercase font-bold text-[11px] tracking-widest",
+              "px-7 py-3.5 rounded-2xl border-2 whitespace-nowrap transition-all uppercase font-black text-[10px] tracking-[0.2em] shadow-sm",
               selectedCategory === "ALL" 
-                ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20" 
-                : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange hover:text-fuego-orange"
+                ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20 scale-105" 
+                : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange/40 hover:text-fuego-orange"
             )}
           >
             ALL
@@ -83,10 +91,10 @@ export const POSScreen = () => {
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={cn(
-                "px-6 py-2.5 rounded-xl border whitespace-nowrap transition-all uppercase font-bold text-[11px] tracking-widest",
+                "px-7 py-3.5 rounded-2xl border-2 whitespace-nowrap transition-all uppercase font-black text-[10px] tracking-[0.2em] shadow-sm",
                 selectedCategory === cat 
-                  ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20" 
-                  : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange hover:text-fuego-orange"
+                  ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20 scale-105" 
+                  : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange/40 hover:text-fuego-orange"
               )}
             >
               {cat}
@@ -98,27 +106,32 @@ export const POSScreen = () => {
         {/* Items Grid */}
         <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start">
           <AnimatePresence mode='popLayout'>
-            {filteredItems.map(item => (
+            {filteredItems.map((item, idx) => (
               <Motion.button
                 key={item.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ delay: idx * 0.02, type: "spring", damping: 20 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => addToCart(item)}
-                className="group relative flex flex-col justify-between h-40 bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-2xl p-6 text-left hover:border-fuego-orange hover:shadow-xl transition-all duration-300"
+                className="group relative flex flex-col justify-between h-44 bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-[2rem] p-7 text-left hover:border-fuego-orange hover:shadow-[0_20px_40px_rgba(234,88,12,0.1)] transition-all duration-500 overflow-hidden"
               >
-                <div>
-                  <h3 className="font-bold text-lg text-[var(--fuego-text)] mb-1 line-clamp-2 uppercase tracking-tight">{item.name}</h3>
-                  <span className="text-[9px] bg-fuego-orange/10 px-2 py-0.5 rounded text-fuego-orange font-black uppercase tracking-widest">{item.category}</span>
+                <div className="relative z-10">
+                  <h3 className="font-black text-[15px] text-[var(--fuego-text)] mb-2 line-clamp-2 uppercase tracking-wide leading-tight group-hover:text-fuego-orange transition-colors italic">{item.name}</h3>
+                  <span className="text-[8px] bg-fuego-orange/10 px-3 py-1 rounded-full text-fuego-orange font-black uppercase tracking-[0.2em] border border-fuego-orange/20 group-hover:bg-fuego-orange group-hover:text-white transition-all">{item.category}</span>
                 </div>
-                <p className="text-fuego-orange text-xl font-bold font-mono mt-auto">₹{item.price.toFixed(2)}</p>
+                <p className="text-fuego-orange text-2xl font-black font-mono mt-auto relative z-10 tracking-tighter">₹{item.price.toFixed(0)}</p>
                 
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="bg-fuego-orange p-1.5 rounded-lg shadow-lg">
-                    <Plus size={20} className="text-white" />
+                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                  <div className="bg-fuego-orange p-2 rounded-2xl shadow-xl">
+                    <Plus size={24} strokeWidth={3} className="text-white" />
                   </div>
+                </div>
+                
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-[var(--fuego-text)] font-black text-6xl italic transform rotate-12 select-none group-hover:opacity-[0.05] transition-opacity">
+                  POS
                 </div>
               </Motion.button>
             ))}
@@ -150,33 +163,33 @@ export const POSScreen = () => {
         </div>
 
         {/* Customer Info (Optional) */}
-        <div className="px-6 py-4 bg-[var(--fuego-card)] border-b border-[var(--fuego-border)] grid grid-cols-3 gap-3 transition-all">
+        <div className="px-6 py-6 bg-[var(--fuego-card)] border-b border-[var(--fuego-border)] grid grid-cols-3 gap-4 transition-all shadow-inner">
           <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)]" size={14} />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
             <input 
               type="text" 
-              placeholder="Guest Name"
-              className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-fuego-orange transition-colors uppercase font-bold text-[var(--fuego-text)]"
+              placeholder="GUEST"
+              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all uppercase font-black tracking-widest text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
           </div>
           <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)]" size={14} />
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
             <input 
               type="text" 
-              placeholder="Phone No"
-              className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-fuego-orange transition-colors font-mono text-[var(--fuego-text)]"
+              placeholder="PHONE"
+              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all font-mono font-bold text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
           </div>
           <div className="relative">
-            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)]" size={14} />
+            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
             <input 
               type="text" 
-              placeholder="Table No"
-              className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-fuego-orange transition-colors font-mono text-[var(--fuego-text)]"
+              placeholder="TABLE"
+              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all font-mono font-bold text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
               value={tableNumber}
               onChange={(e) => setTableNumber(e.target.value)}
             />
@@ -361,6 +374,7 @@ export const POSScreen = () => {
                     type="number"
                     value={discount.value}
                     onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-xl py-3 pl-8 pr-4 text-xl font-bold font-mono focus:border-fuego-orange outline-none text-[var(--fuego-text)]"
                     autoFocus
                   />

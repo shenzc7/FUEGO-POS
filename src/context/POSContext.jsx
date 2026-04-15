@@ -507,12 +507,16 @@ export const POSProvider = ({ children }) => {
   };
 
   const saveSettings = async (newSettings) => {
+    const previousSettings = settings;
     const sanitizedSettings = {
-      ...createDefaultSettings(),
+      ...DEFAULT_SETTINGS,
       ...newSettings,
       gstEnabled: Boolean(newSettings.gstEnabled),
       gstRate: toNumber(newSettings.gstRate, DEFAULT_SETTINGS.gstRate),
     };
+
+    // Optimistic update
+    setSettingsState(sanitizedSettings);
 
     try {
       await apiJson('/settings', {
@@ -520,11 +524,12 @@ export const POSProvider = ({ children }) => {
         body: JSON.stringify(sanitizedSettings),
       });
 
-      setSettingsState(sanitizedSettings);
       return sanitizedSettings;
     } catch (error) {
       console.error('Failed to save settings:', error);
-      window.alert(error.message || 'Error saving settings.');
+      // Rollback on failure
+      setSettingsState(previousSettings);
+      window.alert(error.message || 'Error saving settings. Changes rolled back.');
       throw error;
     }
   };
@@ -539,7 +544,10 @@ export const POSProvider = ({ children }) => {
   };
 
   const addLedgerAdjustment = async (adjustment) => {
-    const payload = normalizeLedgerAdjustment(adjustment);
+    const payload = adjustment.type === 'Transfer' ? {
+      ...adjustment,
+      amount: Number(adjustment.amount)
+    } : normalizeLedgerAdjustment(adjustment);
 
     try {
       const response = await apiJson('/ledger-adjustments', {
@@ -547,11 +555,21 @@ export const POSProvider = ({ children }) => {
         body: JSON.stringify(payload),
       });
 
-      const savedAdjustment = normalizeLedgerAdjustment(response.adjustment);
-      setLedgerAdjustments((previousAdjustments) => [savedAdjustment, ...previousAdjustments]);
-      // Keep server-side totals in sync after every adjustment.
-      refreshFinanceSummary();
-      return savedAdjustment;
+      if (response && response.adjustments) {
+        const savedAdjustments = response.adjustments.map(normalizeLedgerAdjustment);
+        setLedgerAdjustments((previousAdjustments) => [...savedAdjustments, ...previousAdjustments]);
+        refreshFinanceSummary();
+        return savedAdjustments[0];
+      }
+
+      if (response && response.adjustment) {
+        const savedAdjustment = normalizeLedgerAdjustment(response.adjustment);
+        setLedgerAdjustments((previousAdjustments) => [savedAdjustment, ...previousAdjustments]);
+        refreshFinanceSummary();
+        return savedAdjustment;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Failed to save ledger adjustment:', error);
       window.alert(error.message || 'Error saving the manual adjustment.');

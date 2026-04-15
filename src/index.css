@@ -22,19 +22,21 @@
   --fuego-text: #e7e5e4;
   --fuego-text-muted: #a8a29e;
   --fuego-sidebar: #1c1917;
-  --fuego-stat-card: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  --fuego-stat-card: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
   --fuego-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --fuego-glow: 0 0 40px rgba(234, 88, 12, 0.15);
 }
 
 [data-theme='light'] {
   --fuego-bg: #fafaf9;
   --fuego-card: #ffffff;
-  --fuego-border: #e7e5e4;
+  --fuego-border: rgba(0, 0, 0, 0.08);
   --fuego-text: #1c1917;
   --fuego-text-muted: #78716c;
   --fuego-sidebar: #ffffff;
-  --fuego-stat-card: #ffffff;
-  --fuego-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --fuego-stat-card: linear-gradient(135deg, #ffffff 0%, #f5f5f4 100%);
+  --fuego-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+  --fuego-glow: 0 0 40px rgba(234, 88, 12, 0.08);
 }
 
 @layer base {
@@ -46,20 +48,32 @@
 @layer components {
   .glass-card {
     background: var(--fuego-card);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--fuego-border);
-    @apply rounded-xl shadow-xl;
+    @apply rounded-xl shadow-2xl;
+  }
+
+  .premium-input {
+    @apply w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] font-black transition-all shadow-sm placeholder:opacity-20 backdrop-blur-md;
   }
   
   .premium-button {
-    @apply px-6 py-3 bg-fuego-orange text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-fuego-orange/20;
+    @apply px-6 py-3 bg-fuego-orange text-white font-black rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-fuego-orange/20 tracking-widest uppercase text-[10px];
+  }
+
+  .search-bar-premium {
+    @apply w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-full py-4 pl-16 pr-20 focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] font-black transition-all duration-500 shadow-xl shadow-black/10 backdrop-blur-3xl placeholder:text-[10px] placeholder:font-black placeholder:uppercase placeholder:tracking-[0.3em] placeholder:opacity-30 focus:shadow-fuego-orange/10;
   }
 
   .stat-card-base {
     background: var(--fuego-stat-card);
     border: 1px solid var(--fuego-border);
     box-shadow: var(--fuego-shadow);
-    @apply rounded-[2.5rem] transition-all duration-500 hover:border-fuego-orange/20;
+    @apply rounded-[2.5rem] transition-all duration-700 hover:border-fuego-orange/30 hover:translate-y-[-4px] backdrop-blur-xl;
+  }
+
+  .fuego-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-fuego-orange to-fuego-accent font-black;
   }
 }
 

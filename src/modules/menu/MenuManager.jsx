@@ -165,7 +165,7 @@ export const MenuManager = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl"
+              className="bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-[2.5rem] w-full max-w-md shadow-2xl"
             >
               <div className="p-8 border-b border-[var(--fuego-border)] flex items-center justify-between bg-[var(--fuego-bg)]/50">
                 <h2 className="text-xl font-bold text-[var(--fuego-text)]">
@@ -174,30 +174,29 @@ export const MenuManager = () => {
               </div>
               <form onSubmit={saveItem} className="p-8 space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-widest mb-3">
+                  <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] mb-2.5 ml-1 opacity-80">
                     Item Descriptor
                   </label>
                   <input
                     name="name"
                     defaultValue={editingItem.name}
                     required
-                    className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-2xl py-4 px-5 focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] font-bold uppercase transition-all"
+                    className="w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] font-black uppercase transition-all shadow-sm placeholder:opacity-20"
+                    placeholder="Enter item name..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col">
-                    <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-widest mb-3">
-                      Category Group
-                    </label>
                     <CustomSelect
                       name="category"
+                      label="Category Group"
                       options={MENU_CATEGORIES.map((category) => ({ id: category, name: category }))}
                       value={editingItem.category}
                       onChange={(value) => setEditingItem({ ...editingItem, category: value })}
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-widest mb-3">
+                    <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] mb-2.5 ml-1 opacity-80">
                       Unit Price (₹)
                     </label>
                     <input
@@ -205,8 +204,10 @@ export const MenuManager = () => {
                       type="number"
                       step="0.01"
                       defaultValue={editingItem.price}
+                      onWheel={(e) => e.target.blur()}
                       required
-                      className="w-full bg-[var(--fuego-bg)] border border-[var(--fuego-border)] rounded-2xl py-4 px-5 focus:outline-none focus:border-fuego-orange font-mono font-bold text-[var(--fuego-text)] transition-all"
+                      className="w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-fuego-orange font-mono font-bold text-[var(--fuego-text)] transition-all shadow-sm"
+                      placeholder="0.00"
                     />
                   </div>
                 </div>

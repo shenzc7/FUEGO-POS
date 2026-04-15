@@ -37,30 +37,35 @@ const StatCard = ({ label, value, icon: Icon, colorClass, trend, onClick }) => (
     whileHover={{ y: -5 }}
     onClick={onClick}
     className={cn(
-      "stat-card-base p-8 group relative flex flex-col justify-between min-h-[160px]",
-      onClick && "cursor-pointer active:scale-95"
+      "stat-card-base p-8 group relative flex flex-col justify-between min-h-[160px] cursor-pointer active:scale-95 overflow-hidden",
+      onClick && "ring-2 ring-fuego-orange/0 hover:ring-fuego-orange/20 transition-all"
     )}
   >
-    <div className="flex justify-between items-start">
-      <div className={cn("p-3 rounded-2xl bg-[var(--fuego-bg)] border border-[var(--fuego-border)] shadow-sm", colorClass)}>
-        <Icon size={20} strokeWidth={2.5} />
+    <div className="relative z-10 flex justify-between items-start">
+      <div className={cn("p-4 rounded-2xl bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] shadow-sm group-hover:border-fuego-orange transition-all", colorClass)}>
+        <Icon size={24} strokeWidth={2.5} />
       </div>
       {trend && (
-        <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-emerald-500/20">
+        <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border-2 border-emerald-500/20 shadow-sm">
           <TrendingUp size={12} />
           {trend}%
         </div>
       )}
     </div>
     
-    <div className="mt-6">
-      <p className="text-[var(--fuego-text-muted)] text-[10px] font-black uppercase tracking-[0.25em] mb-2">{label}</p>
-      <div className="flex items-baseline gap-1">
-        <span className="text-xl font-bold text-[var(--fuego-text-muted)] tracking-tighter">₹</span>
-        <h3 className="text-4xl font-bold font-mono text-[var(--fuego-text)] tracking-tighter tabular-nums leading-none">
+    <div className="mt-8 relative z-10">
+      <p className="text-[var(--fuego-text-muted)] text-[10px] font-black uppercase tracking-[0.35em] mb-3 opacity-60">{label}</p>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-2xl font-black text-[var(--fuego-text-muted)] tracking-tighter italic opacity-40">₹</span>
+        <h3 className="text-4xl font-black font-mono text-[var(--fuego-text)] tracking-tighter tabular-nums leading-none">
           {formatValue(value)}
         </h3>
       </div>
+    </div>
+
+    {/* Background Decorative Element */}
+    <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-[var(--fuego-text)] transform rotate-12 group-hover:opacity-[0.06] transition-all duration-700 pointer-events-none">
+       <Icon size={140} strokeWidth={1} />
     </div>
   </motion.div>
 );

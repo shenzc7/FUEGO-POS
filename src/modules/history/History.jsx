@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { usePOS } from '../../context/POSContext';
 import { Search, Printer, Eye, ChevronRight, FileText, Calendar, Receipt, Edit, Trash2, X, Check, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,20 +44,35 @@ export const History = () => {
     exportToCSV(exportData, `transactions_${new Date().toISOString().split('T')[0]}`);
   };
 
-  const handlePDFExport = () => {
-    exportReport('TRANSACTION HISTORY', filteredOrders, reportHeaders);
-  };
   
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
   const [orderToDelete, setOrderToDelete] = useState(null);
 
-  const filteredOrders = orders.filter(o => 
-    o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (o.customerPhone && o.customerPhone.includes(searchTerm))
-  );
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => 
+      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (o.customerPhone && o.customerPhone.includes(searchTerm))
+    );
+  }, [orders, searchTerm]);
+
+  // Virtualization state
+  const scrollContainerRef = useRef(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const ITEM_HEIGHT = 104; // Matches the padding + content height
+  const VIEWPORT_HEIGHT = 800; // Estimated height of sidebar list
+  
+  const handleScroll = (e) => {
+    setScrollTop(e.target.scrollTop);
+  };
+
+  const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - 3);
+  const endIndex = Math.min(filteredOrders.length, startIndex + Math.ceil(VIEWPORT_HEIGHT/ITEM_HEIGHT) + 6);
+  const visibleOrders = filteredOrders.slice(startIndex, endIndex);
+  const totalHeight = filteredOrders.length * ITEM_HEIGHT;
+  const offsetY = startIndex * ITEM_HEIGHT;
 
   const handleDelete = (id) => {
     setOrderToDelete(id);
@@ -123,13 +138,6 @@ export const History = () => {
               >
                 <Download size={18} />
               </button>
-              <button 
-                onClick={handlePDFExport}
-                className="p-3 bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-xl text-[var(--fuego-text-muted)] hover:text-fuego-orange hover:border-fuego-orange/30 transition-all shadow-sm"
-                title="Export PDF"
-              >
-                <Printer size={18} />
-              </button>
             </div>
           </div>
           <div className="relative">
@@ -144,38 +152,47 @@ export const History = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto" 
+          onScroll={handleScroll}
+        >
           {filteredOrders.length === 0 ? (
             <div className="p-12 text-center text-[var(--fuego-text-muted)] italic font-medium">No historical records found.</div>
           ) : (
-            filteredOrders.map(order => (
-              <button
-                key={order.id}
-                onClick={() => setSelectedOrder(order)}
-                className={`w-full p-6 flex items-center gap-5 transition-all border-b border-[var(--fuego-border)] ${
-                  selectedOrder?.id === order.id ? 'bg-fuego-orange/10 border-r-4 border-r-fuego-orange' : 'hover:bg-[var(--fuego-bg)]/50'
-                }`}
-              >
-                <div className="w-12 h-12 rounded-2xl bg-fuego-orange/10 flex items-center justify-center text-fuego-orange shrink-0 border border-fuego-orange/20">
-                  <FileText size={24} />
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-sm font-mono font-bold text-[var(--fuego-text)] truncate">{order.id}</span>
-                    <span className="text-sm font-bold text-fuego-orange font-mono tabular-nums shrink-0 ml-4">₹{order.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-[var(--fuego-text-muted)] font-black uppercase tracking-widest">{formatTime12h(order.timestamp).split(',')[1]}</span>
-                    <span className={`text-[9px] font-black uppercase rounded-full px-2.5 py-1 border ${
-                      order.payment?.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                    }`}>
-                      {order.payment?.status}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight size={20} className="text-[var(--fuego-text-muted)] opacity-30" />
-              </button>
-            ))
+            <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+              <div style={{ transform: `translateY(${offsetY}px)`, position: 'absolute', width: '100%', left: 0, top: 0 }}>
+                {visibleOrders.map(order => (
+                  <button
+                    key={order.id}
+                    onClick={() => setSelectedOrder(order)}
+                    style={{ height: `${ITEM_HEIGHT}px` }}
+                    className={`w-full p-6 flex items-center gap-5 transition-all border-b border-[var(--fuego-border)] ${
+                      selectedOrder?.id === order.id ? 'bg-fuego-orange/10 border-r-4 border-r-fuego-orange' : 'hover:bg-[var(--fuego-bg)]/50'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-fuego-orange/10 flex items-center justify-center text-fuego-orange shrink-0 border border-fuego-orange/20">
+                      <FileText size={24} />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-sm font-mono font-bold text-[var(--fuego-text)] truncate">{order.id}</span>
+                        <span className="text-sm font-bold text-fuego-orange font-mono tabular-nums shrink-0 ml-4">₹{order.total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-[var(--fuego-text-muted)] font-black uppercase tracking-widest">{formatTime12h(order.timestamp).split(',')[1]}</span>
+                        <span className={`text-[9px] font-black uppercase rounded-full px-2.5 py-1 border ${
+                          order.payment?.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        }`}>
+                          {order.payment?.status}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={20} className="text-[var(--fuego-text-muted)] opacity-30" />
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

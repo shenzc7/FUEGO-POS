@@ -236,24 +236,30 @@ const toOptionalNullableText = (value) => {
   return text || null;
 };
 
+const toSafePositiveNumber = (value, fallback = 0) => {
+  return Math.max(0, toNumber(value, fallback));
+};
+
 const normalizePayment = (payment = {}, total = 0) => {
   const method = toOptionalText(payment.method, toOptionalText(payment.method_legacy, 'Cash'));
   const status = toOptionalText(payment.status, toOptionalText(payment.status_legacy, 'Paid'));
+  
+  const totalVal = toSafePositiveNumber(total, 0);
   const amountPaid =
-    payment.amountPaid === undefined ? (status === 'Paid' ? total : 0) : toNumber(payment.amountPaid, 0);
-  const due = payment.due === undefined ? Math.max(0, total - amountPaid) : Math.max(0, toNumber(payment.due, 0));
+    payment.amountPaid === undefined ? (status === 'Paid' ? totalVal : 0) : toSafePositiveNumber(payment.amountPaid, 0);
+  const due = payment.due === undefined ? Math.max(0, totalVal - amountPaid) : toSafePositiveNumber(payment.due, 0);
   const change =
-    payment.change === undefined ? Math.max(0, amountPaid - total) : Math.max(0, toNumber(payment.change, 0));
+    payment.change === undefined ? Math.max(0, amountPaid - totalVal) : toSafePositiveNumber(payment.change, 0);
 
   const normalized = {
     ...payment,
     method: String(method || 'Cash'),
     status: String(status || 'Paid'),
-    amountPaid: Number.isFinite(amountPaid) ? amountPaid : 0,
-    due: Number.isFinite(due) ? due : 0,
-    change: Number.isFinite(change) ? change : 0,
+    amountPaid,
+    due,
+    change,
     tenderedAmount:
-      payment.tenderedAmount === undefined ? undefined : toNumber(payment.tenderedAmount, amountPaid),
+      payment.tenderedAmount === undefined ? undefined : toSafePositiveNumber(payment.tenderedAmount, amountPaid),
   };
 
   // Ensure these are also in sync if they exist in payment object
@@ -516,7 +522,7 @@ const sanitizeMenuItem = (payload, fallback = {}) => {
     id,
     name,
     category,
-    price: toNumber(payload?.price, 0),
+    price: toSafePositiveNumber(payload?.price, 0),
     active: payload?.active === undefined ? Boolean(fallback.active ?? true) : Boolean(payload.active),
   };
 };
@@ -537,8 +543,8 @@ const sanitizeOrderItems = (items) => {
     return {
       itemId,
       name,
-      price: toNumber(item?.price, 0),
-      quantity: Math.max(1, Math.trunc(toNumber(item?.quantity, 1))),
+      price: toSafePositiveNumber(item?.price, 0),
+      quantity: Math.max(1, Math.trunc(toSafePositiveNumber(item?.quantity, 1))),
       note: toOptionalNullableText(item?.note),
     };
   });
@@ -679,6 +685,10 @@ fastify.setErrorHandler((error, _request, reply) => {
   });
 });
 
+fastify.get('/', async () => {
+  return { status: 'FUEGO Backend Running', version: '2.0.0' };
+});
+
 fastify.get('/menu', async () => {
   return statements.selectMenuItems.all().map(mapMenuItem);
 });
@@ -762,74 +772,46 @@ fastify.get('/orders', async (request) => {
 // Lightweight server-side aggregation — computes accurate cash/bank totals across
 // ALL orders and ALL ledger adjustments without loading order_items into memory.
 fastify.get('/finance/summary', async () => {
-  const orderRows = db.prepare('SELECT total, payment_method, payment_status, payment_json FROM orders').all();
+  // Use SQL-native aggregation for performance and scalability.
+  // This approach calculates account balances directly in the database,
+  // identifying and summing splits using JSON capabilities where necessary.
+  
+  const accounts = ['Cash', 'UPI', 'Bank'];
+  const summary = {};
 
-  let cashTotal = 0;
-  let upiTotal = 0;
-  let bankTotal = 0;
+  for (const acc of accounts) {
+    // 1. Direct sales (Non-split)
+    const directSalesQuery = db.prepare(`
+      SELECT COALESCE(SUM(total), 0) as total 
+      FROM orders 
+      WHERE payment_method = ? AND payment_status = 'Paid'
+    `);
+    const directSales = directSalesQuery.get(acc).total;
 
-  for (const row of orderRows) {
-    const total = toNumber(row.total, 0);
-    const paymentFromJson = parseJson(row.payment_json);
-    
-    const payment = {
-      ...(paymentFromJson || {}),
-      method: paymentFromJson?.method || row.payment_method || 'Cash',
-      status: paymentFromJson?.status || row.payment_status || 'Paid',
-    };
+    // 2. Split sales (Extract from JSON)
+    // We use json_each to flatten the splits array and sum matching methods.
+    const splitSalesQuery = db.prepare(`
+      SELECT COALESCE(SUM(CAST(json_extract(j.value, '$.amount') AS REAL)), 0) as total
+      FROM orders o, json_each(o.payment_json, '$.splits') j
+      WHERE o.payment_method = 'Split' 
+        AND o.payment_status = 'Paid' 
+        AND json_extract(j.value, '$.method') = ?
+    `);
+    const splitSales = splitSalesQuery.get(acc).total;
 
-    if (payment.method === 'Split' && Array.isArray(payment.splits)) {
-      for (const split of payment.splits) {
-        const amount = Math.max(0, toNumber(split?.amount, 0));
-        if (amount > 0) {
-          const method = (split?.method || 'Cash').toUpperCase().trim();
-          if (method === 'CASH') {
-            cashTotal += amount;
-          } else if (method === 'UPI') {
-            upiTotal += amount;
-          } else {
-            bankTotal += amount;
-          }
-        }
-      }
-    } else {
-      const amount = getCollectedAmount(payment, total);
-      if (amount > 0) {
-        const method = (payment.method || 'Cash').toUpperCase().trim();
-        if (method === 'CASH') {
-          cashTotal += amount;
-        } else if (method === 'UPI') {
-          upiTotal += amount;
-        } else {
-          bankTotal += amount;
-        }
-      }
-    }
+    // 3. Ledger Adjustments
+    const adjustmentsQuery = db.prepare(`
+      SELECT COALESCE(SUM(CASE WHEN type = 'Outflow' THEN -amount ELSE amount END), 0) as net
+      FROM ledger_adjustments
+      WHERE account = ?
+    `);
+    const adjustments = adjustmentsQuery.get(acc).net;
+
+    summary[`${acc.toLowerCase()}Total`] = directSales + splitSales + adjustments;
   }
 
-  // Include ledger adjustments in the totals.
-  const adjustmentRows = db
-    .prepare('SELECT account, type, amount FROM ledger_adjustments')
-    .all();
-
-  for (const row of adjustmentRows) {
-    const amount = toNumber(row.amount, 0);
-    const delta = row.type === 'Outflow' ? -amount : amount;
-    if (row.account === 'Cash') {
-      cashTotal += delta;
-    } else if (row.account === 'UPI') {
-      upiTotal += delta;
-    } else {
-      bankTotal += delta;
-    }
-  }
-
-  return {
-    cashTotal,
-    upiTotal,
-    bankTotal,
-    combinedTotal: cashTotal + upiTotal + bankTotal,
-  };
+  summary.combinedTotal = summary.cashTotal + summary.upiTotal + summary.bankTotal;
+  return summary;
 });
 
 fastify.post('/orders', async (request, reply) => {
@@ -846,12 +828,12 @@ fastify.post('/orders', async (request, reply) => {
   }
 
   const items = sanitizeOrderItems(payload.items);
-  const total = toNumber(payload.total, 0);
+  const total = toSafePositiveNumber(payload.total, 0);
   const order = {
     id: orderId,
-    subtotal: toNumber(payload.subtotal, 0),
-    discount: toNumber(payload.discount ?? payload.discountAmount, 0),
-    gst: toNumber(payload.gst, 0),
+    subtotal: toSafePositiveNumber(payload.subtotal, 0),
+    discount: toSafePositiveNumber(payload.discount ?? payload.discountAmount, 0),
+    gst: toSafePositiveNumber(payload.gst, 0),
     total,
     tableNumber: toOptionalNullableText(payload.tableNumber),
     customerName: toOptionalNullableText(payload.customerName),
@@ -921,13 +903,13 @@ fastify.patch('/orders/:id', async (request) => {
 
   const existingOrder = hydrateOrderByRow(existingRow);
   const payload = request.body ?? {};
-  const total = toNumber(payload.total ?? existingOrder.total, existingOrder.total);
+  const total = toSafePositiveNumber(payload.total ?? existingOrder.total, existingOrder.total);
   const shouldMergePayment = Boolean(payload.mergePayment);
   const nextOrder = {
     id,
-    subtotal: toNumber(payload.subtotal ?? existingOrder.subtotal, existingOrder.subtotal),
-    discount: toNumber(payload.discount ?? existingOrder.discount, existingOrder.discount),
-    gst: toNumber(payload.gst ?? existingOrder.gst, existingOrder.gst),
+    subtotal: toSafePositiveNumber(payload.subtotal ?? existingOrder.subtotal, existingOrder.subtotal),
+    discount: toSafePositiveNumber(payload.discount ?? existingOrder.discount, existingOrder.discount),
+    gst: toSafePositiveNumber(payload.gst ?? existingOrder.gst, existingOrder.gst),
     total,
     tableNumber: payload.tableNumber === undefined ? existingOrder.tableNumber : toOptionalNullableText(payload.tableNumber),
     customerName: payload.customerName === undefined ? existingOrder.customerName : toOptionalNullableText(payload.customerName),

@@ -20,12 +20,10 @@ export const ThermalReceipt = ({ data, type = 'INVOICE' }) => {
   const printedAt = data.timestamp ? new Date(data.timestamp) : new Date();
   const documentTitle = isKOT
     ? '*** KITCHEN ORDER TICKET ***'
-    : isEstimate
-      ? '--- ESTIMATE / PREVIEW ---'
-      : data.payment?.status === 'Paid'
-        ? '--- CASH MEMO ---'
-        : '--- DUE BILL ---';
-  const referenceLabel = isKOT ? 'KOT REF' : isEstimate ? 'EST REF' : 'BILL REF';
+    : data.payment?.status === 'Paid'
+      ? '--- CASH MEMO ---'
+      : '--- DUE BILL ---';
+  const referenceLabel = isKOT ? 'KOT REF' : 'BILL REF';
   const paymentMethod = data.payment?.method || 'DIRECT';
   const displayedPaidAmount = data.payment?.amountPaid || data.total || 0;
   const displayedTenderedAmount =
@@ -152,7 +150,7 @@ export const ThermalReceipt = ({ data, type = 'INVOICE' }) => {
             </div>
             <div className="receipt-divider-solid" />
 
-            {showPaymentSection ? (
+            {showPaymentSection && (
               <div style={{ marginTop: '2mm' }}>
                 {/* Split payments: show each method and its amount individually */}
                 {paymentMethod === 'Split' && Array.isArray(data.payment?.splits) && data.payment.splits.length > 0 ? (
@@ -189,10 +187,6 @@ export const ThermalReceipt = ({ data, type = 'INVOICE' }) => {
                   </div>
                 )}
               </div>
-            ) : (
-              <div style={{ marginTop: '2mm', border: '1px dashed #000', padding: '1.5mm', textAlign: 'center', fontWeight: 'bold' }}>
-                PREVIEW ONLY. FINAL BILL IS GENERATED AT PAYMENT.
-              </div>
             )}
           </div>
         </div>
@@ -202,9 +196,9 @@ export const ThermalReceipt = ({ data, type = 'INVOICE' }) => {
       <div className="receipt-footer-block" style={{ textAlign: 'center', fontSize: '10px' }}>
         <div className="receipt-divider" />
         <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>
-          {isKOT ? 'SEND TO KITCHEN' : isEstimate ? 'ESTIMATE ONLY' : 'THANK YOU FOR VISITING!'}
+          {isKOT ? 'SEND TO KITCHEN' : 'THANK YOU FOR VISITING!'}
         </div>
-        <div>{isKOT ? 'PREPARE AS LISTED ABOVE' : isEstimate ? 'NOT A FINAL TAX INVOICE' : 'PLEASE VISIT AGAIN'}</div>
+        <div>{isKOT ? 'PREPARE AS LISTED ABOVE' : 'PLEASE VISIT AGAIN'}</div>
 
         {isRP326 && (
           <div style={{ marginTop: '2mm', fontSize: '8px', borderTop: '1px solid #000', paddingTop: '1mm', opacity: 0.8 }}>
