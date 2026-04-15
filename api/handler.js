@@ -32,21 +32,17 @@ const getRequestUrl = (request) => {
 };
 
 const getSegments = (request) => {
-  let segments = [];
+  // Parse the pathname from the request URL
+  const url = getRequestUrl(request);
+  const pathname = url.pathname;
 
-  // 1. Try Vercel's native query-based segments
-  if (Array.isArray(request.query?.route)) {
-    segments = request.query.route;
-  } else {
-    // 2. Fallback: Parse from URL
-    const pathname = getRequestUrl(request).pathname.replace(/^\/api\/?/, '');
-    segments = pathname ? pathname.split('/').filter(Boolean).map(decodeURIComponent) : [];
-  }
-
-  // 3. Sanitize: Remove 'api' if it was captured as a segment
-  if (segments[0] === 'api') {
-    segments = segments.slice(1);
-  }
+  // Extract segments after '/api/'
+  // Example: '/api/orders/123' -> ['orders', '123']
+  const segments = pathname
+    .replace(/^\/api\//, '')
+    .split('/')
+    .filter(Boolean)
+    .map(decodeURIComponent);
 
   return segments;
 };
