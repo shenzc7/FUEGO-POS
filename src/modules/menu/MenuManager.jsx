@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { usePOS } from '../../context/POSContext';
-import { Plus, Edit, Trash2, Search, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, CheckCircle2, XCircle, Tag } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { CustomSelect } from '../../components/CustomSelect';
-import { MENU_CATEGORIES } from '../../data/mockData';
+
 
 export const MenuManager = () => {
-  const { menuItems, upsertMenuItem, toggleMenuItemStatus, removeMenuItem } = usePOS();
+  const { menuItems, upsertMenuItem, toggleMenuItemStatus, removeMenuItem, categories, addCategory } = usePOS();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState(null);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isCategorySaving, setIsCategorySaving] = useState(false);
+
 
   const filteredItems = menuItems.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -65,6 +69,24 @@ export const MenuManager = () => {
     }
   };
 
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    setIsCategorySaving(true);
+    try {
+      await addCategory(newCategoryName);
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      window.alert(error.message || 'Failed to add category.');
+    } finally {
+      setIsCategorySaving(false);
+    }
+  };
+
+
   return (
     <div className="h-screen bg-[var(--fuego-bg)] p-8 overflow-y-auto transition-colors duration-300">
       <div className="flex items-center justify-between mb-10">
@@ -74,13 +96,24 @@ export const MenuManager = () => {
             Configure your offerings and prices
           </p>
         </div>
-        <button
-          onClick={() => setEditingItem({ id: 'new', name: '', price: 0, category: 'Classic', active: true })}
-          className="flex items-center gap-2 bg-fuego-orange text-white px-6 py-3 rounded-xl font-bold hover:brightness-110 shadow-lg shadow-fuego-orange/20 transition-all active:scale-95 text-[10px] uppercase tracking-widest"
-        >
-          <Plus size={20} />
-          Add New Item
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsAddingCategory(true)}
+            className="flex items-center gap-2 bg-[var(--fuego-card)] text-[var(--fuego-text)] border border-[var(--fuego-border)] px-6 py-3 rounded-xl font-bold hover:bg-[var(--fuego-bg)] transition-all active:scale-95 text-[10px] uppercase tracking-widest"
+          >
+            <Tag size={18} />
+            Add Category
+          </button>
+          <button
+            onClick={() => setEditingItem({ id: 'new', name: '', price: '', category: categories[0] || '', active: true })}
+            className="flex items-center gap-2 bg-fuego-orange text-white px-6 py-3 rounded-xl font-bold hover:brightness-110 shadow-lg shadow-fuego-orange/20 transition-all active:scale-95 text-[10px] uppercase tracking-widest"
+          >
+            <Plus size={20} />
+            Add New Item
+          </button>
+
+        </div>
+
       </div>
 
       <div className="mb-8">
@@ -162,69 +195,83 @@ export const MenuManager = () => {
         {editingItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <Motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-[2.5rem] w-full max-w-md shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="deep-glass w-full max-w-md shadow-2xl relative"
+
             >
-              <div className="p-8 border-b border-[var(--fuego-border)] flex items-center justify-between bg-[var(--fuego-bg)]/50">
-                <h2 className="text-xl font-bold text-[var(--fuego-text)]">
-                  {editingItem.id === 'new' ? 'New Item Protocol' : 'Modify Item Parameters'}
-                </h2>
-              </div>
-              <form onSubmit={saveItem} className="p-8 space-y-6">
+              {/* Decorative top glow */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-fuego-orange/40 to-transparent" />
+
+              <div className="p-8 border-b border-white/5 flex items-center justify-between">
                 <div>
-                  <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] mb-2.5 ml-1 opacity-80">
+                  <h2 className="text-2xl font-black text-[var(--fuego-text)] italic tracking-tight font-mono uppercase">
+                    {editingItem.id === 'new' ? 'NEW ITEM' : 'MODIFY ITEM'}
+                  </h2>
+                </div>
+              </div>
+
+
+              <form onSubmit={saveItem} className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] ml-1 opacity-80">
                     Item Descriptor
                   </label>
                   <input
                     name="name"
                     defaultValue={editingItem.name}
                     required
-                    className="w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-fuego-orange text-[var(--fuego-text)] font-black uppercase transition-all shadow-sm placeholder:opacity-20"
+                    className="premium-input uppercase"
                     placeholder="Enter item name..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col">
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="flex flex-col space-y-2">
                     <CustomSelect
                       name="category"
                       label="Category Group"
-                      options={MENU_CATEGORIES.map((category) => ({ id: category, name: category }))}
+                      options={categories.map((category) => ({ id: category, name: category }))}
                       value={editingItem.category}
                       onChange={(value) => setEditingItem({ ...editingItem, category: value })}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] mb-2.5 ml-1 opacity-80">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] ml-1 opacity-80">
                       Unit Price (₹)
                     </label>
-                    <input
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      defaultValue={editingItem.price}
-                      onWheel={(e) => e.target.blur()}
-                      required
-                      className="w-full bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-fuego-orange font-mono font-bold text-[var(--fuego-text)] transition-all shadow-sm"
-                      placeholder="0.00"
-                    />
+                    <div className="relative">
+                      <input
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        defaultValue={editingItem.price}
+                        placeholder="0.00"
+                        onWheel={(e) => e.target.blur()}
+                        required
+                        className="premium-input font-mono !pl-10"
+                      />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text)] opacity-20 font-bold">₹</span>
+                    </div>
+
                   </div>
                 </div>
+
                 <div className="pt-8 flex gap-4">
                   <button
                     type="button"
                     onClick={() => setEditingItem(null)}
-                    className="flex-1 py-4 border border-[var(--fuego-border)] rounded-2xl font-black text-[10px] tracking-widest hover:bg-[var(--fuego-bg)] transition-all text-[var(--fuego-text-muted)] uppercase"
+                    className="premium-button-secondary flex-1"
                   >
                     Abort
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-4 bg-fuego-orange text-white rounded-2xl font-black text-[10px] tracking-[0.2em] hover:brightness-110 shadow-lg shadow-fuego-orange/20 transition-all active:scale-95 uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="premium-button flex-1"
                     disabled={isSaving}
                   >
-                    {isSaving ? 'Saving...' : 'Commit'}
+                    {isSaving ? 'Processing...' : 'Commit Changes'}
                   </button>
                 </div>
               </form>
@@ -232,6 +279,65 @@ export const MenuManager = () => {
           </div>
         )}
       </AnimatePresence>
+
+
+      <AnimatePresence>
+        {isAddingCategory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="deep-glass w-full max-w-sm shadow-2xl relative"
+
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+              
+              <div className="p-8 border-b border-white/5">
+                <h2 className="text-2xl font-black text-[var(--fuego-text)] italic tracking-tight font-mono uppercase">NEW CATEGORY</h2>
+              </div>
+
+
+              <form onSubmit={handleAddCategory} className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-[var(--fuego-text-muted)] uppercase tracking-[0.25em] ml-1 opacity-80">
+                    Category Name
+                  </label>
+                  <input
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    required
+                    className="premium-input uppercase"
+                    placeholder="Enter category name..."
+                  />
+                </div>
+                <div className="pt-4 flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingCategory(false);
+                      setNewCategoryName('');
+                    }}
+                    className="premium-button-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="premium-button flex-1"
+                    disabled={isCategorySaving}
+                  >
+                    {isCategorySaving ? 'Adding...' : 'Add Category'}
+                  </button>
+                </div>
+              </form>
+            </Motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
     </div>
   );
 };

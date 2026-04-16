@@ -37,7 +37,7 @@ const StatCard = ({ label, value, icon: Icon, colorClass, trend, onClick }) => (
     whileHover={{ y: -5 }}
     onClick={onClick}
     className={cn(
-      "stat-card-base p-8 group relative flex flex-col justify-between min-h-[160px] cursor-pointer active:scale-95 overflow-hidden",
+      "stat-card-base p-6 group relative flex flex-col justify-between min-h-[140px] cursor-pointer active:scale-95 overflow-hidden",
       onClick && "ring-2 ring-fuego-orange/0 hover:ring-fuego-orange/20 transition-all"
     )}
   >
@@ -53,8 +53,8 @@ const StatCard = ({ label, value, icon: Icon, colorClass, trend, onClick }) => (
       )}
     </div>
     
-    <div className="mt-8 relative z-10">
-      <p className="text-[var(--fuego-text-muted)] text-[10px] font-black uppercase tracking-[0.35em] mb-3 opacity-60">{label}</p>
+    <div className="mt-6 relative z-10">
+      <p className="text-[var(--fuego-text-muted)] text-[9px] font-black uppercase tracking-[0.35em] mb-2 opacity-60">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <span className="text-2xl font-black text-[var(--fuego-text-muted)] tracking-tighter italic opacity-40">₹</span>
         <h3 className="text-4xl font-black font-mono text-[var(--fuego-text)] tracking-tighter tabular-nums leading-none">
@@ -197,21 +197,21 @@ export const Dashboard = () => {
   const maxHourlySale = Math.max(...hourlySales.map(h => Number(h.total) || 0), 1);
 
   return (
-    <div className="h-screen overflow-y-auto bg-[var(--fuego-bg)] p-8 transition-colors duration-300">
-      <div className="flex items-center justify-between mb-10">
+    <div className="h-screen overflow-y-auto bg-[var(--fuego-bg)] p-6 transition-colors duration-300">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-fuego-orange mb-2">Internal Analytics</h2>
           <h1 className="text-4xl font-bold font-logo text-[var(--fuego-text)]">Sales Overview</h1>
         </div>
-        <div className="flex items-center gap-4 bg-[var(--fuego-card)] rounded-[1.5rem] px-6 py-3 border border-[var(--fuego-border)] shadow-sm">
-          <Calendar size={18} className="text-fuego-orange" />
-          <span className="font-bold text-sm tracking-tight text-[var(--fuego-text)]">
+        <div className="flex items-center gap-3 bg-[var(--fuego-card)] rounded-2xl px-5 py-2.5 border border-[var(--fuego-border)] shadow-sm">
+          <Calendar size={16} className="text-fuego-orange" />
+          <span className="font-bold text-xs tracking-tight text-[var(--fuego-text)]">
             {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <StatCard 
           label={currentSalesLabel} 
           value={currentSalesValue} 
@@ -234,7 +234,7 @@ export const Dashboard = () => {
           onClick={() => setActiveView('Accounts')}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="xl:col-span-2 group relative overflow-hidden bg-gradient-to-br from-fuego-orange/15 to-[var(--fuego-card)] border border-fuego-orange/20 rounded-[2.5rem] p-10 cursor-pointer hover:border-fuego-orange/50 transition-all shadow-2xl"
+          className="lg:col-span-2 group relative overflow-hidden bg-gradient-to-br from-fuego-orange/15 to-[var(--fuego-card)] border border-fuego-orange/20 rounded-3xl p-8 cursor-pointer hover:border-fuego-orange/50 transition-all shadow-2xl"
         >
            <div className="flex justify-between items-start mb-10 relative z-10">
               <div className="p-5 rounded-3xl bg-[var(--fuego-bg)] border border-fuego-orange/20 text-fuego-orange shadow-lg">
@@ -268,7 +268,7 @@ export const Dashboard = () => {
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="stat-card-base p-10 flex flex-col justify-between relative overflow-hidden group border border-fuego-orange/10"
+          className="stat-card-base p-8 flex flex-col justify-between relative overflow-hidden group border border-fuego-orange/10"
         >
            <div className="absolute top-0 left-0 w-2 h-full bg-fuego-orange/40" />
            <div>
@@ -310,9 +310,9 @@ export const Dashboard = () => {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 stat-card-base overflow-hidden shadow-sm">
-          <div className="p-8 border-b border-[var(--fuego-border)] flex items-center justify-between bg-[var(--fuego-bg)]/30 backdrop-blur-md">
+          <div className="p-6 border-b border-[var(--fuego-border)] flex items-center justify-between bg-[var(--fuego-bg)]/30 backdrop-blur-md">
             <h2 className="text-xl font-bold text-[var(--fuego-text)] flex items-center gap-4">
                Recent Sales
                <div className="h-1 w-12 bg-fuego-orange/20 rounded-full" />
@@ -359,15 +359,15 @@ export const Dashboard = () => {
 
         <div className="flex flex-col gap-8">
           {/* Most Sold Items Summary */}
-          <div className="stat-card-base p-10">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-[var(--fuego-text-muted)] mb-10 flex items-center justify-between">
+          <div className="stat-card-base p-8">
+            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-[var(--fuego-text-muted)] mb-8 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <TrendingUp size={18} className="text-fuego-orange" />
+                <TrendingUp size={16} className="text-fuego-orange" />
                 Top Selling Items
               </div>
-              <span className="text-[10px] opacity-50">Top Moving</span>
+              <span className="text-[9px] opacity-50">Top Moving</span>
             </h2>
-            <div className="space-y-10">
+            <div className="space-y-8">
               {topItems.map((item) => (
                 <div key={item.name} className="space-y-4">
                   <div className="flex justify-between items-end">
@@ -389,9 +389,9 @@ export const Dashboard = () => {
           </div>
 
           {/* Top Customers Summary - Fixed gaps */}
-          <div className="stat-card-base p-10 flex flex-col">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-[var(--fuego-text-muted)] mb-10 flex items-center gap-3">
-              <Users size={18} className="text-fuego-orange" />
+          <div className="stat-card-base p-8 flex flex-col">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--fuego-text-muted)] mb-8 flex items-center gap-2">
+              <Users size={16} className="text-fuego-orange" />
               Top Customers
             </h2>
             <div className="space-y-6">
@@ -418,17 +418,17 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div id="pending-settlements" className="mt-16 stat-card-base overflow-hidden border border-red-500/10 shadow-2xl">
-        <div className="p-10 border-b border-[var(--fuego-border)] flex items-center justify-between bg-gradient-to-r from-red-500/5 to-transparent">
+      <div id="pending-settlements" className="mt-12 stat-card-base overflow-hidden border border-red-500/10 shadow-2xl">
+        <div className="p-8 border-b border-[var(--fuego-border)] flex items-center justify-between bg-gradient-to-r from-red-500/5 to-transparent">
           <div>
-            <h2 className="text-2xl font-bold text-[var(--fuego-text)]">Unpaid Orders</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/70 mt-2 font-mono">Awaiting Payments</p>
+            <h2 className="text-xl font-bold text-[var(--fuego-text)]">Unpaid Orders</h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-red-500/70 mt-2 font-mono">Awaiting Payments</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.2em] shadow-sm">
+            <span className="bg-red-500/10 text-red-500 border border-red-500/20 px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
               {orders.filter(o => o.payment?.status === 'Pending').length} Pending
             </span>
-            <p className="text-[10px] text-[var(--fuego-text-muted)] font-black uppercase tracking-widest">Settlement Required</p>
+            <p className="text-[9px] text-[var(--fuego-text-muted)] font-black uppercase tracking-widest">Settlement Required</p>
           </div>
         </div>
         <div className="overflow-x-auto">

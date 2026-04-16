@@ -9,8 +9,10 @@ import {
   Landmark,
   Users,
   Sun,
-  Moon
+  Moon,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -18,29 +20,33 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, className }) => (
   <button
     onClick={onClick}
     className={cn(
-      "flex flex-col items-center justify-center p-4 w-full transition-all duration-300 gap-1 group",
+      "flex flex-col items-center justify-center p-3 md:p-4 w-full transition-all duration-300 gap-1 group relative",
       active 
-        ? "text-fuego-orange bg-fuego-orange/10 border-r-[3px] border-fuego-orange shadow-[inset_-10px_0_15px_-10px_rgba(234,88,12,0.1)]" 
-        : "text-[var(--fuego-text-muted)] hover:text-[var(--fuego-text)] hover:bg-[var(--fuego-bg)]"
+        ? "text-fuego-orange bg-fuego-orange/5" 
+        : "text-[var(--fuego-text-muted)] hover:text-[var(--fuego-text)] hover:bg-white/5",
+      className
     )}
+    title={label}
   >
-    <Icon size={22} className={cn("transition-transform group-hover:scale-110", active && "scale-110")} />
-    <span className="text-[9px] font-black uppercase tracking-[0.15em]">{label}</span>
+    {active && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] md:w-[3px] h-3/5 bg-fuego-orange rounded-l-full shadow-[0_0_10px_rgba(234,88,12,0.5)]" />}
+    <Icon size={20} className={cn("transition-transform group-hover:scale-110", active && "scale-110 md:scale-110", "md:w-5 md:h-5 w-6 h-6")} />
+    <span className="text-[9px] font-black uppercase tracking-[0.15em] hidden md:block">{label}</span>
   </button>
 );
 
 export const Sidebar = () => {
   const { activeView, setActiveView, theme, toggleTheme } = usePOS();
+  const { logout } = useAuth();
 
   return (
-    <aside className="w-24 bg-[var(--fuego-sidebar)] border-r border-[var(--fuego-border)] flex flex-col items-center py-6 h-screen sticky top-0 no-print transition-colors duration-300">
-      <div className="mb-10 text-fuego-orange font-logo text-2xl italic font-bold">F</div>
+    <aside className="w-16 md:w-24 bg-[var(--fuego-sidebar)] border-r border-[var(--fuego-border)] flex flex-col items-center py-6 md:py-8 h-screen sticky top-0 no-print transition-all duration-300 z-50 shrink-0">
+      <div className="mb-8 md:mb-10 text-fuego-orange font-logo text-2xl md:text-3xl italic font-black">F</div>
       
-      <div className="flex-1 w-full space-y-2">
+      <div className="flex-1 w-full space-y-1 md:space-y-2 px-0">
         <SidebarItem 
           icon={ShoppingCart} 
           label="Terminal" 
@@ -79,13 +85,15 @@ export const Sidebar = () => {
         />
       </div>
 
-      <div className="mt-auto flex flex-col items-center w-full gap-4">
+      <div className="mt-auto flex flex-col items-center w-full gap-2 px-0 pb-4">
+        <div className="w-8 md:w-12 h-[1px] bg-[var(--fuego-border)] mb-4" />
+        
         <button 
           onClick={toggleTheme}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-fuego-orange/10 text-fuego-orange hover:bg-fuego-orange/20 transition-all active:scale-95"
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl text-[var(--fuego-text-muted)] hover:text-fuego-orange hover:bg-fuego-orange/10 transition-all active:scale-95 group"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          {theme === 'dark' ? <Sun size={18} className="md:size-5" /> : <Moon size={18} className="md:size-5" />}
         </button>
 
         <SidebarItem 
@@ -94,6 +102,18 @@ export const Sidebar = () => {
           active={activeView === 'Settings'} 
           onClick={() => setActiveView('Settings')} 
         />
+
+        <button 
+          onClick={() => {
+            if (window.confirm('Are you sure you want to log out?')) {
+              logout();
+            }
+          }}
+          className="w-full py-4 flex items-center justify-center text-red-500/50 hover:text-red-500 hover:bg-red-500/5 transition-all active:scale-95 group"
+          title="Log Out"
+        >
+          <LogOut size={20} className="group-hover:scale-110 transition-transform" />
+        </button>
       </div>
     </aside>
   );

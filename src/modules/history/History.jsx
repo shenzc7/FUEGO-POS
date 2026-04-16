@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { usePOS } from '../../context/POSContext';
-import { Search, Printer, Eye, ChevronRight, FileText, Calendar, Receipt, Edit, Trash2, X, Check, Download } from 'lucide-react';
+import { Search, Printer, Eye, ChevronRight, FileText, Calendar, Receipt, Edit, Trash2, X, Check, Download, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToCSV } from '../../utils/exportUtils';
+import { FinancesLock } from '../../components/FinancesLock';
 
 export const History = () => {
-  const { orders, printOrder, updateOrder, deleteOrder, exportReport } = usePOS();
+  const { orders, printOrder, updateOrder, deleteOrder, settings } = usePOS();
   const [searchTerm, setSearchTerm] = useState('');
   
   const formatTime12h = (date) => {
@@ -49,6 +50,7 @@ export const History = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
   const [orderToDelete, setOrderToDelete] = useState(null);
+  const [showDeleteLock, setShowDeleteLock] = useState(false);
 
   const filteredOrders = useMemo(() => {
     return orders.filter(o => 
@@ -79,10 +81,21 @@ export const History = () => {
   };
 
   const confirmDelete = () => {
+    const isLockActive = settings?.pincodeEnabled && settings?.pincode?.length === 4;
+    
+    if (isLockActive) {
+      setShowDeleteLock(true);
+    } else {
+      executeDelete();
+    }
+  };
+
+  const executeDelete = () => {
     if (orderToDelete) {
       deleteOrder(orderToDelete);
       setSelectedOrder(null);
       setOrderToDelete(null);
+      setShowDeleteLock(false);
     }
   };
 
@@ -507,6 +520,18 @@ export const History = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Lock */}
+      <AnimatePresence>
+        {showDeleteLock && (
+          <FinancesLock 
+            pincode={settings.pincode}
+            onUnlock={executeDelete}
+            onClose={() => setShowDeleteLock(false)}
+            message="Please provide authorization to purge this record."
+          />
         )}
       </AnimatePresence>
     </div>

@@ -72,7 +72,7 @@ const AccountCard = ({ title, balance, icon: Icon, color, onClick, isActive }) =
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden p-8 rounded-[2rem] border cursor-pointer transition-all duration-500',
+        'relative overflow-hidden p-6 rounded-2xl border cursor-pointer transition-all duration-500',
         isActive
           ? `${colors.bg} ${colors.border} shadow-2xl ${colors.shadow} border-fuego-orange/20`
           : 'bg-[var(--fuego-card)] border-[var(--fuego-border)] hover:border-fuego-orange/20',
@@ -214,8 +214,8 @@ export const Finances = () => {
   return (
     <div className="h-screen flex flex-col bg-[var(--fuego-bg)] overflow-hidden transition-colors duration-300">
       {/* Header Section */}
-      <div className="p-10 pb-6 shrink-0">
-        <div className="flex items-center justify-between mb-10">
+      <div className="p-6 shrink-0">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold font-logo text-[var(--fuego-text)]">Capital Ledger</h1>
             <p className="text-[10px] text-fuego-orange font-black uppercase tracking-[0.5em] mt-2">Fiscal Oversight & Audit</p>
@@ -240,7 +240,7 @@ export const Finances = () => {
         </div>
 
         {/* Global Totals */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <AccountCard
             title="Combined Balance"
             balance={displayTotals.combinedTotal}
@@ -306,8 +306,8 @@ export const Finances = () => {
       </div>
 
       {/* Main Ledger Table - Scrollable Section */}
-      <div className="flex-1 overflow-y-auto px-10 pb-10 custom-scrollbar">
-        <div className="bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
+        <div className="bg-[var(--fuego-card)] border border-[var(--fuego-border)] rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl">
           <table className="w-full text-left">
             <thead className="bg-[var(--fuego-bg)]/50 text-[10px] text-[var(--fuego-text-muted)] uppercase font-black tracking-[0.3em] border-b border-[var(--fuego-border)]">
               <tr>

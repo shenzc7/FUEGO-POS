@@ -12,8 +12,11 @@ import { ThermalReceipt } from './components/ThermalReceipt';
 import { PaymentModal } from './components/PaymentModal';
 
 import { FinancesLock } from './components/FinancesLock';
+import { useAuth } from './context/AuthContext';
+import { LoginPage } from './components/LoginPage';
 
 function App() {
+  const { isAuthenticated } = useAuth();
   const { 
     activeView, 
     printingData, 
@@ -25,11 +28,15 @@ function App() {
   } = usePOS();
 
   const [isFinancesUnlocked, setIsFinancesUnlocked] = useState(false);
+  const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false);
 
-  // Reset lock when leaving finances
+  // Reset lock when leaving finances or settings
   useEffect(() => {
     if (activeView !== 'Accounts') {
       setIsFinancesUnlocked(false);
+    }
+    if (activeView !== 'Settings') {
+      setIsSettingsUnlocked(false);
     }
   }, [activeView]);
 
@@ -41,6 +48,17 @@ function App() {
         <FinancesLock 
           pincode={settings.pincode} 
           onUnlock={() => setIsFinancesUnlocked(true)} 
+          message="Authentication required to access financial manifests."
+        />
+      );
+    }
+
+    if (activeView === 'Settings' && !isSettingsUnlocked) {
+      return (
+        <FinancesLock 
+          pincode="2713" 
+          onUnlock={() => setIsSettingsUnlocked(true)} 
+          message="Administrator privileges required for system configuration."
         />
       );
     }
@@ -56,6 +74,10 @@ function App() {
       default: return <POSScreen />;
     }
   };
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <>

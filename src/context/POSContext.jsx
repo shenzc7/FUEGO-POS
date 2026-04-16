@@ -13,6 +13,8 @@ import {
   scheduleBrowserPrint
 } from '../utils/pos';
 import { openReportPrintWindow } from '../utils/reports';
+import { MENU_CATEGORIES } from '../data/mockData';
+
 
 const POSContext = createContext(null);
 
@@ -123,6 +125,8 @@ export const POSProvider = ({ children }) => {
   // Server-side aggregate — covers ALL historical records regardless of the
   // in-memory orders slice. Used by the Finance page for the balance cards.
   const [financeServerSummary, setFinanceServerSummary] = useState(null);
+  const [categories, setCategories] = useState(MENU_CATEGORIES);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -175,7 +179,12 @@ export const POSProvider = ({ children }) => {
         } else if (summaryResult.status === 'rejected') {
           console.error('Failed to load finance summary:', summaryResult.reason);
         }
+
+        if (settingsResult.status === 'fulfilled' && settingsResult.value?.menu_categories) {
+          setCategories(settingsResult.value.menu_categories);
+        }
       });
+
     });
 
     return () => {
@@ -408,10 +417,6 @@ export const POSProvider = ({ children }) => {
   };
 
   const deleteOrder = async (orderId) => {
-    if (!window.confirm('Delete this record permanently?')) {
-      return false;
-    }
-
     try {
       await apiJson(`/orders/${encodeURIComponent(orderId)}`, {
         method: 'DELETE',
@@ -653,6 +658,30 @@ export const POSProvider = ({ children }) => {
     setCart((previousCart) => previousCart.filter((item) => item.id !== itemId));
   };
 
+  const addCategory = async (name) => {
+    if (!name || typeof name !== 'string') return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error(`Category "${trimmed}" already exists.`);
+    }
+
+    const nextCategories = [...categories, trimmed];
+    setCategories(nextCategories);
+
+    try {
+      await saveSettings({
+        menu_categories: nextCategories,
+      });
+    } catch (error) {
+      // Rollback on failure
+      setCategories(categories);
+      throw error;
+    }
+  };
+
+
   const value = {
     menuItems,
     orders,
@@ -707,8 +736,11 @@ export const POSProvider = ({ children }) => {
     toggleMenuItemStatus,
     removeMenuItem,
     financeServerSummary,
+    categories,
+    addCategory,
     cn,
   };
+
 
   return <POSContext.Provider value={value}>{children}</POSContext.Provider>;
 };

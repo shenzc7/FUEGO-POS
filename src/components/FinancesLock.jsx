@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Lock, Delete, X, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const FinancesLock = ({ onUnlock, pincode }) => {
+export const FinancesLock = ({ onUnlock, pincode, onClose, message }) => {
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
 
@@ -52,6 +52,16 @@ export const FinancesLock = ({ onUnlock, pincode }) => {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-fuego-orange/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative space-y-8">
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="absolute -top-2 -right-2 p-2 text-[var(--fuego-text-muted)] hover:text-fuego-orange transition-colors z-20"
+              title="Close"
+            >
+              <X size={20} />
+            </button>
+          )}
+
           <div className="text-center space-y-3">
             <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${
               error ? 'bg-red-500/10 text-red-500 shadow-lg shadow-red-500/20' : 'bg-fuego-orange/10 text-fuego-orange shadow-lg shadow-fuego-orange/10'
@@ -122,7 +132,7 @@ export const FinancesLock = ({ onUnlock, pincode }) => {
 
           <div className="pt-2 text-center">
             <p className="text-[10px] text-[var(--fuego-text-muted)] italic opacity-60">
-              Only authorized staff can access financial manifests.
+              {message || 'Only authorized staff can access this section.'}
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePOS } from '../../context/POSContext';
-import { MENU_CATEGORIES } from '../../data/mockData';
-import { Search, Plus, Minus, X, Receipt, CreditCard, Trash2, ShoppingCart, Tag, User, Hash, Phone, Printer, Pause, Play } from 'lucide-react';
+import { Search, Plus, Minus, X, Receipt, CreditCard, Trash2, ShoppingCart, Tag, User, Hash, Phone, Printer, Pause, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -23,13 +23,33 @@ export const POSScreen = () => {
     settings,
     printOrder,
     setIsPaymentModalOpen,
-    parkedOrders, parkCurrentOrder, resumeOrder, deleteParkedOrder
+    parkedOrders, parkCurrentOrder, resumeOrder, deleteParkedOrder,
+    categories
   } = usePOS();
+
   
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isParkedModalOpen, setIsParkedModalOpen] = useState(false);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+  const scrollRef = useRef(null);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [categories]);
+
 
   const filteredItems = (menuItems || []).filter(item => 
     item.active &&
@@ -42,21 +62,21 @@ export const POSScreen = () => {
       {/* Main Billing Area */}
       <div className="flex-1 flex flex-col bg-[var(--fuego-bg)] p-6 overflow-hidden">
         {/* Header & Search */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="group relative w-[520px]">
-            <Search 
-              className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] group-focus-within:text-fuego-orange transition-all duration-300 transform group-focus-within:scale-110" 
-              size={18} 
-              strokeWidth={3} 
-            />
+        <div className="flex items-center justify-between mb-6">
+          <div className="group relative w-full max-w-lg">
             <input 
               type="text" 
               placeholder="COLLECTION SEARCH..."
-              className="search-bar-premium"
+              className="premium-input !pl-14"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-30 group-focus-within:opacity-60 transition-opacity">
+            <Search 
+              className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] group-focus-within:text-fuego-orange transition-all duration-300 transform group-focus-within:scale-110 z-10" 
+              size={18} 
+              strokeWidth={3} 
+            />
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-30 group-focus-within:opacity-60 transition-opacity z-10">
               <span className="text-[10px] font-black border border-[var(--fuego-text-muted)] rounded-md px-1.5 py-0.5">⌘</span>
               <span className="text-[10px] font-black border border-[var(--fuego-text-muted)] rounded-md px-1.5 py-0.5">K</span>
             </div>
@@ -73,64 +93,119 @@ export const POSScreen = () => {
           )}
         </div>
 
-        {/* Categories */}
-        <div className="flex gap-4 mb-10 overflow-x-auto pb-4 no-scrollbar">
-          <button
-            onClick={() => setSelectedCategory("ALL")}
+        {/* Categories Navigation Wrapper */}
+        <div className="relative group/nav mb-8">
+          {/* Scroll Navigation Buttons */}
+          <div 
             className={cn(
-              "px-7 py-3.5 rounded-2xl border-2 whitespace-nowrap transition-all uppercase font-black text-[10px] tracking-[0.2em] shadow-sm",
-              selectedCategory === "ALL" 
-                ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20 scale-105" 
-                : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange/40 hover:text-fuego-orange"
+              "absolute left-0 top-0 bottom-4 w-16 bg-gradient-to-r from-[var(--fuego-bg)] to-transparent z-10 pointer-events-none transition-opacity duration-300",
+              showLeftArrow ? "opacity-100" : "opacity-0"
             )}
+          />
+          <div 
+            className={cn(
+              "absolute right-0 top-0 bottom-4 w-16 bg-gradient-to-l from-[var(--fuego-bg)] to-transparent z-10 pointer-events-none transition-opacity duration-300",
+              showRightArrow ? "opacity-100" : "opacity-0"
+            )}
+          />
+          
+          {showLeftArrow && (
+            <button 
+              onClick={() => {
+                scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' });
+              }}
+              className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-[var(--fuego-card)] border border-[var(--fuego-border)] text-[var(--fuego-text)] hover:text-fuego-orange hover:border-fuego-orange/50 shadow-xl transition-all hover:scale-110"
+            >
+              <ChevronLeft size={20} strokeWidth={3} />
+            </button>
+          )}
+
+          {showRightArrow && (
+            <button 
+              onClick={() => {
+                scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' });
+              }}
+              className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-[var(--fuego-card)] border border-[var(--fuego-border)] text-[var(--fuego-text)] hover:text-fuego-orange hover:border-fuego-orange/50 shadow-xl transition-all hover:scale-110"
+            >
+              <ChevronRight size={20} strokeWidth={3} />
+            </button>
+          )}
+
+          <div 
+            ref={scrollRef}
+            onScroll={checkScroll}
+            className="flex gap-3 overflow-x-auto pb-4 px-8 scroll-smooth"
           >
-            ALL
-          </button>
-          {MENU_CATEGORIES.map(cat => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => setSelectedCategory("ALL")}
               className={cn(
-                "px-7 py-3.5 rounded-2xl border-2 whitespace-nowrap transition-all uppercase font-black text-[10px] tracking-[0.2em] shadow-sm",
-                selectedCategory === cat 
-                  ? "bg-fuego-orange border-fuego-orange text-white shadow-lg shadow-fuego-orange/20 scale-105" 
-                  : "bg-[var(--fuego-card)] border-[var(--fuego-border)] text-[var(--fuego-text-muted)] hover:border-fuego-orange/40 hover:text-fuego-orange"
+                "px-6 py-2.5 mx-1 rounded-xl border whitespace-nowrap transition-all uppercase font-bold text-[9px] tracking-[0.2em] shadow-sm shrink-0",
+                selectedCategory === "ALL" 
+                  ? "bg-gradient-to-br from-fuego-orange to-[#c2410c] border-white/20 text-white shadow-lg shadow-fuego-orange/20 scale-105" 
+                  : "bg-white/5 border-white/10 text-[var(--fuego-text-muted)] hover:bg-white/10 hover:text-white"
               )}
             >
-              {cat}
+              ALL
             </button>
-          ))}
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={cn(
+                  "px-6 py-2.5 mx-1 rounded-xl border whitespace-nowrap transition-all uppercase font-bold text-[9px] tracking-[0.2em] shadow-sm shrink-0",
+                  selectedCategory === cat 
+                    ? "bg-gradient-to-br from-fuego-orange to-[#c2410c] border-white/20 text-white shadow-lg shadow-fuego-orange/20 scale-105" 
+                    : "bg-white/5 border-white/10 text-[var(--fuego-text-muted)] hover:bg-white/10 hover:text-white"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
 
         {/* Items Grid */}
-        <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start">
-          <AnimatePresence mode='popLayout'>
-            {filteredItems.map((item, idx) => (
+        <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 content-start">
+          <AnimatePresence>
+            {filteredItems.map((item) => (
               <Motion.button
                 key={item.id}
                 layout
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ delay: idx * 0.02, type: "spring", damping: 20 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20, transition: { duration: 0.2 } }}
+                transition={{ 
+                  type: "spring", 
+                  damping: 25, 
+                  stiffness: 350,
+                  layout: { duration: 0.3 }
+                }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => addToCart(item)}
-                className="group relative flex flex-col justify-between h-44 bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-[2rem] p-7 text-left hover:border-fuego-orange hover:shadow-[0_20px_40px_rgba(234,88,12,0.1)] transition-all duration-500 overflow-hidden"
+                className="group relative flex flex-col justify-between h-36 bg-[var(--fuego-card)] border-2 border-[var(--fuego-border)] rounded-2xl p-4 text-left hover:border-fuego-orange hover:shadow-[0_20px_40px_rgba(234,88,12,0.1)] transition-[border-color,box-shadow] duration-300 overflow-hidden"
               >
-                <div className="relative z-10">
-                  <h3 className="font-black text-[15px] text-[var(--fuego-text)] mb-2 line-clamp-2 uppercase tracking-wide leading-tight group-hover:text-fuego-orange transition-colors italic">{item.name}</h3>
-                  <span className="text-[8px] bg-fuego-orange/10 px-3 py-1 rounded-full text-fuego-orange font-black uppercase tracking-[0.2em] border border-fuego-orange/20 group-hover:bg-fuego-orange group-hover:text-white transition-all">{item.category}</span>
-                </div>
-                <p className="text-fuego-orange text-2xl font-black font-mono mt-auto relative z-10 tracking-tighter">₹{item.price.toFixed(0)}</p>
-                
-                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                  <div className="bg-fuego-orange p-2 rounded-2xl shadow-xl">
-                    <Plus size={24} strokeWidth={3} className="text-white" />
+                <div className="relative z-10 flex flex-col gap-1.5">
+                  <h3 className="font-black text-[13px] text-[var(--fuego-text)] line-clamp-2 uppercase tracking-wide leading-tight group-hover:text-fuego-orange transition-colors italic min-h-[2.2em]">
+                    {item.name}
+                  </h3>
+                  <div>
+                    <span className="inline-block text-[7px] bg-fuego-orange/10 px-2.5 py-1 rounded-full text-fuego-orange font-black uppercase tracking-[0.2em] border border-fuego-orange/20 group-hover:bg-fuego-orange group-hover:text-white transition-all whitespace-nowrap">
+                      {item.category}
+                    </span>
                   </div>
                 </div>
+                <p className="text-fuego-orange text-xl font-black font-mono mt-2 relative z-10 tracking-tighter">₹{item.price.toFixed(0)}</p>
+
                 
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-[var(--fuego-text)] font-black text-6xl italic transform rotate-12 select-none group-hover:opacity-[0.05] transition-opacity">
+                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <div className="bg-fuego-orange p-1.5 rounded-xl shadow-xl">
+                    <Plus size={18} strokeWidth={3} className="text-white" />
+                  </div>
+                </div>
+
+                
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-[var(--fuego-text)] font-black text-6xl italic transform rotate-12 select-none group-hover:opacity-[0.05] transition-opacity pointer-events-none">
                   POS
                 </div>
               </Motion.button>
@@ -140,9 +215,10 @@ export const POSScreen = () => {
       </div>
 
       {/* Order Summary Sidebar */}
-      <div className="w-[400px] bg-[var(--fuego-sidebar)] border-l border-[var(--fuego-border)] flex flex-col transition-colors duration-300 shadow-2xl">
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-xl font-bold font-logo text-fuego-orange">Current Order</h2>
+      <div className="w-80 lg:w-96 bg-[var(--fuego-sidebar)] border-l border-[var(--fuego-border)] flex flex-col transition-colors duration-300 shadow-2xl relative z-20">
+        <div className="p-4 border-b border-[var(--fuego-border)] flex items-center justify-between bg-[var(--fuego-bg)]/20">
+
+          <h2 className="text-lg font-bold font-logo text-fuego-orange tracking-tight">Current Order</h2>
           <div className="flex gap-1">
             <button 
               onClick={parkCurrentOrder}
@@ -163,36 +239,40 @@ export const POSScreen = () => {
         </div>
 
         {/* Customer Info (Optional) */}
-        <div className="px-6 py-6 bg-[var(--fuego-card)] border-b border-[var(--fuego-border)] grid grid-cols-3 gap-4 transition-all shadow-inner">
+        <div className="px-4 py-4 bg-[var(--fuego-card)] border-b border-[var(--fuego-border)] grid grid-cols-1 gap-2.5 transition-all">
+
+
           <div className="relative">
             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
             <input 
               type="text" 
-              placeholder="GUEST"
-              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all uppercase font-black tracking-widest text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
+              placeholder="GUEST NAME"
+              className="premium-input pl-10"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
           </div>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
-            <input 
-              type="text" 
-              placeholder="PHONE"
-              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all font-mono font-bold text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-            />
-          </div>
-          <div className="relative">
-            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
-            <input 
-              type="text" 
-              placeholder="TABLE"
-              className="w-full bg-[var(--fuego-bg)] border-2 border-[var(--fuego-border)] rounded-xl py-3 pl-10 pr-4 text-[10px] focus:outline-none focus:border-fuego-orange transition-all font-mono font-bold text-[var(--fuego-text)] shadow-sm placeholder:opacity-30"
-              value={tableNumber}
-              onChange={(e) => setTableNumber(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
+              <input 
+                type="text" 
+                placeholder="PHONE"
+                className="premium-input pl-10 !py-3 !text-[11px]"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+              />
+            </div>
+            <div className="relative">
+              <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fuego-text-muted)] opacity-50" size={14} />
+              <input 
+                type="text" 
+                placeholder="TABLE"
+                className="premium-input pl-10 !py-3 !text-[11px]"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -212,11 +292,12 @@ export const POSScreen = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="bg-[var(--fuego-card)] rounded-xl p-3 flex items-center border border-[var(--fuego-border)] shadow-sm hover:border-fuego-orange/30 transition-all group"
+                  className="bg-[var(--fuego-card)] rounded-2xl p-3 flex items-center border border-[var(--fuego-border)] hover:border-fuego-orange/30 transition-all group relative overflow-hidden"
                 >
+                  <div className="absolute inset-0 bg-gradient-to-r from-fuego-orange/0 to-fuego-orange/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   {/* Name and Price Section */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="flex items-center justify-between gap-2">
                       <h4 className="font-bold text-[var(--fuego-text)] text-[11px] truncate uppercase tracking-tight">{item.name}</h4>
                       <button
                         onClick={() => removeFromCart(item.id)}
@@ -225,11 +306,11 @@ export const POSScreen = () => {
                         <Trash2 size={13} />
                       </button>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[9px] font-black text-fuego-orange/60 font-mono">₹{item.price.toFixed(2)}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                        <p className="text-[10px] font-black text-fuego-orange font-mono">₹{item.price.toFixed(0)}</p>
                         <input 
                           type="text" 
-                          placeholder="Add note..."
+                          placeholder="Note..."
                           className="text-[9px] bg-transparent border-none text-[var(--fuego-text-muted)] focus:text-fuego-orange outline-none flex-1 truncate italic"
                           value={item.note || ''}
                           onChange={(e) => updateItemNote(item.id, e.target.value)}
@@ -238,25 +319,26 @@ export const POSScreen = () => {
                   </div>
                   
                   {/* Controls Section */}
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center bg-[var(--fuego-bg)] rounded-lg p-0.5 border border-[var(--fuego-border)]">
+                  <div className="flex items-center gap-3 shrink-0 border-l border-[var(--fuego-border)] pl-3">
+                    <div className="flex items-center bg-[var(--fuego-bg)]/20 rounded-xl p-0.5 border border-[var(--fuego-border)]">
+
                       <button 
                         onClick={() => updateQuantity(item.id, -1)}
-                        className="w-7 h-7 flex items-center justify-center text-[var(--fuego-text-muted)] hover:text-fuego-orange transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-[var(--fuego-text-muted)] hover:text-fuego-orange transition-colors"
                       >
-                        <Minus size={12} />
+                        <Minus size={10} />
                       </button>
-                      <span className="w-5 text-center text-[11px] font-black font-mono text-[var(--fuego-text)]">{item.quantity}</span>
+                      <span className="w-5 text-center text-[10px] font-black font-mono text-[var(--fuego-text)]">{item.quantity}</span>
                       <button 
                         onClick={() => updateQuantity(item.id, 1)}
-                        className="w-7 h-7 flex items-center justify-center text-[var(--fuego-text-muted)] hover:text-fuego-orange transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-[var(--fuego-text-muted)] hover:text-fuego-orange transition-colors"
                       >
-                        <Plus size={12} />
+                        <Plus size={10} />
                       </button>
                     </div>
                     
-                    <div className="text-right min-w-[75px]">
-                      <p className="font-black text-sm text-[var(--fuego-text)] font-mono whitespace-nowrap">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    <div className="text-right min-w-[65px]">
+                      <p className="font-black text-[13px] text-[var(--fuego-text)] font-mono whitespace-nowrap">₹{(item.price * item.quantity).toFixed(0)}</p>
                     </div>
                   </div>
                 </Motion.div>
@@ -266,8 +348,8 @@ export const POSScreen = () => {
         </div>
 
         {/* Totals & Actions */}
-        <div className="p-6 bg-[var(--fuego-card)] border-t border-[var(--fuego-border)] space-y-5">
-          <div className="space-y-3 text-[10px] text-[var(--fuego-text-muted)] font-black uppercase tracking-[0.2em]">
+        <div className="p-4 bg-[var(--fuego-card)] border-t border-[var(--fuego-border)] space-y-4">
+          <div className="space-y-2.5 text-[9px] text-[var(--fuego-text-muted)] font-black uppercase tracking-[0.2em]">
             <div className="flex justify-between items-center px-1">
               <span>Gross Total</span>
               <span className="text-[var(--fuego-text)] font-mono text-sm">₹{subtotal.toFixed(2)}</span>
@@ -288,9 +370,9 @@ export const POSScreen = () => {
               </div>
             )}
             
-            <div className="flex justify-between items-end pt-5 border-t border-[var(--fuego-border)] mt-2">
-              <span className="text-base font-black text-[var(--fuego-text)] tracking-tighter">GRAND TOTAL</span>
-              <span className="text-3xl font-black text-fuego-orange font-mono leading-none">₹{total.toFixed(2)}</span>
+            <div className="flex justify-between items-end pt-4 border-t border-[var(--fuego-border)] mt-1.5">
+              <span className="text-sm font-black text-[var(--fuego-text)] tracking-tighter">GRAND TOTAL</span>
+              <span className="text-2xl font-black text-fuego-orange font-mono leading-none">₹{total.toFixed(0)}</span>
             </div>
           </div>
 
@@ -304,11 +386,11 @@ export const POSScreen = () => {
                 customerPhone,
                 timestamp: new Date().toISOString() 
               }, 'KOT')}
-              className="flex items-center justify-center gap-2 py-3 border border-white/10 rounded-xl hover:bg-white/5 transition-all active:scale-95 text-sm font-medium disabled:opacity-50"
+              className="premium-button-secondary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
               disabled={cart.length === 0}
             >
-              <Receipt size={18} />
-              PRINT KOT
+              <Receipt size={16} />
+              KOT
             </button>
             <button 
               onClick={() => printOrder({ 
@@ -323,19 +405,19 @@ export const POSScreen = () => {
                 total,
                 timestamp: new Date().toISOString() 
               }, 'ESTIMATE')}
-              className="flex items-center justify-center gap-2 py-3 border border-white/10 rounded-xl hover:bg-white/5 transition-all active:scale-95 text-sm font-medium disabled:opacity-50"
+              className="premium-button-secondary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
               disabled={cart.length === 0}
             >
-              <Printer size={18} />
-              PRINT BILL
+              <Printer size={16} />
+              BILL
             </button>
             <button 
               onClick={() => setIsPaymentModalOpen(true)}
-              className="col-span-2 flex items-center justify-center gap-2 py-4 bg-fuego-orange text-white rounded-xl hover:brightness-110 shadow-lg shadow-fuego-orange/20 transition-all active:scale-95 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="col-span-2 premium-button flex items-center justify-center gap-3 py-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={cart.length === 0}
             >
               <CreditCard size={18} />
-              PAYMENT
+              COMPLETE PAYMENT
             </button>
           </div>
         </div>
