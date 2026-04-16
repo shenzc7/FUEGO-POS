@@ -118,6 +118,57 @@ const parseJson = (value, fallback = null) => {
 
 const toSafePositiveNumber = (value, fallback = 0) => Math.max(0, toNumber(value, fallback));
 
+const toOptionalText = (value, fallback = '') => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const text = String(value).trim();
+  return text || fallback;
+};
+
+const toOptionalNullableText = (value) => {
+  const text = toOptionalText(value, '');
+  return text || null;
+};
+
+const getCollectedAmount = (payment = {}, total = Number.POSITIVE_INFINITY) => {
+  const amountPaid = Math.max(0, toNumber(payment.amountPaid, 0));
+  const change = Math.max(0, toNumber(payment.change, 0));
+  const cappedTotal = Number.isFinite(total) ? Math.max(0, toNumber(total, 0)) : amountPaid;
+
+  if (change > 0 && amountPaid > cappedTotal) {
+    return Math.max(0, amountPaid - change);
+  }
+
+  return amountPaid;
+};
+
+const paymentToAllocations = (payment = {}, total = 0) => {
+  if (payment.method === 'Split' && Array.isArray(payment.splits)) {
+    return payment.splits
+      .map((split) => ({
+        method: toOptionalText(split?.method, 'Cash'),
+        account: toOptionalText(split?.account, ''),
+        amount: Math.max(0, toNumber(split?.amount, 0)),
+      }))
+      .filter((split) => split.amount > 0);
+  }
+
+  const amount = getCollectedAmount(payment, total);
+  if (amount <= 0) {
+    return [];
+  }
+
+  return [
+    {
+      method: toOptionalText(payment.method, 'Cash'),
+      account: toOptionalText(payment.account, ''),
+      amount,
+    },
+  ];
+};
+
 // Shared normalization functions are now imported from src/utils/normalize.js
 
 // serializeOrder helper
