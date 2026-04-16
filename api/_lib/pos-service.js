@@ -397,7 +397,7 @@ const ensureSchema = async () => {
   const sql = await getSqlAsync();
   if (!sql) return;
 
-  await sql.query(`
+  await sql`
     CREATE TABLE IF NOT EXISTS menu_items (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -405,9 +405,9 @@ const ensureSchema = async () => {
       category TEXT NOT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE
     )
-  `);
+  `;
 
-  await sql.query(`
+  await sql`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       subtotal DOUBLE PRECISION,
@@ -425,9 +425,9 @@ const ensureSchema = async () => {
       receipt_settings_json JSONB,
       is_deleted BOOLEAN NOT NULL DEFAULT FALSE
     )
-  `);
+  `;
 
-  await sql.query(`
+  await sql`
     CREATE TABLE IF NOT EXISTS order_items (
       id BIGSERIAL PRIMARY KEY,
       order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
@@ -437,16 +437,16 @@ const ensureSchema = async () => {
       quantity INTEGER,
       note TEXT
     )
-  `);
+  `;
 
-  await sql.query(`
+  await sql`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value JSONB
     )
-  `);
+  `;
 
-  await sql.query(`
+  await sql`
     CREATE TABLE IF NOT EXISTS ledger_adjustments (
       id TEXT PRIMARY KEY,
       timestamp TEXT NOT NULL,
@@ -456,18 +456,18 @@ const ensureSchema = async () => {
       source TEXT NOT NULL,
       note TEXT
     )
-  `);
+  `;
 
-  await sql.query(`
+  await sql`
     ALTER TABLE orders 
     ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE
-  `);
+  `;
 
-  await sql.query('CREATE INDEX IF NOT EXISTS idx_orders_timestamp ON orders(timestamp)');
-  await sql.query('CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)');
-  await sql.query(
-    'CREATE INDEX IF NOT EXISTS idx_ledger_adjustments_timestamp ON ledger_adjustments(timestamp)',
-  );
+  await sql`CREATE INDEX IF NOT EXISTS idx_orders_timestamp ON orders(timestamp)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)`;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_ledger_adjustments_timestamp ON ledger_adjustments(timestamp)
+  `;
 };
 
 const seedDatabase = async () => {
@@ -641,10 +641,14 @@ const hydrateOrders = async (rows) => {
 
   const sql = getSql();
   const orderIds = rows.map((row) => row.id);
-  const itemRows = await sql.query(
-    `${ORDER_ITEM_SELECT} WHERE order_id = ANY($1::text[]) ORDER BY id ASC`,
-    [orderIds],
-  );
+  const itemRows = await sql`
+    SELECT
+      id, order_id AS "orderId", item_id AS "itemId",
+      name, price, quantity, note
+    FROM order_items
+    WHERE order_id = ANY(${orderIds}::text[])
+    ORDER BY id ASC
+  `;
   const itemsByOrderId = new Map();
 
   for (const row of itemRows) {
@@ -661,7 +665,16 @@ const hydrateOrders = async (rows) => {
 
 export const getOrderById = async (id) => {
   const sql = await getSqlAsync();
-  const rows = await sql.query(`${ORDER_SELECT} WHERE id = $1 AND is_deleted = false`, [id]);
+  const rows = await sql`
+    SELECT
+      id, subtotal, discount, gst, total,
+      table_number AS "tableNumber", customer_name AS "customerName",
+      customer_phone AS "customerPhone", note, timestamp,
+      payment_method AS "paymentMethod", payment_status AS "paymentStatus",
+      payment_json AS "paymentJson", receipt_settings_json AS "receiptSettingsJson"
+    FROM orders
+    WHERE id = ${id} AND is_deleted = false
+  `;
 
   if (rows.length === 0) {
     return null;
@@ -714,10 +727,9 @@ export const createMenuItem = async (payload) => {
 
 export const updateMenuItem = async (id, payload) => {
   const sql = getSql();
-  const existingRows = await sql.query(
-    'SELECT id, name, price, category, active FROM menu_items WHERE id = $1',
-    [id],
-  );
+  const existingRows = await sql`
+    SELECT id, name, price, category, active FROM menu_items WHERE id = ${id}
+  `;
 
   if (existingRows.length === 0) {
     throw createHttpError(404, `Menu item "${id}" was not found.`);
@@ -779,11 +791,30 @@ export const listOrders = async ({ limit, since }) => {
   const sanitizedLimit =
     Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.min(Number(limit), 5000) : 500;
   const rows = since
-    ? await sql.query(`${ORDER_SELECT} WHERE is_deleted = false AND timestamp >= $1 ORDER BY timestamp DESC LIMIT $2`, [
-        since,
-        sanitizedLimit,
-      ])
-    : await sql.query(`${ORDER_SELECT} WHERE is_deleted = false ORDER BY timestamp DESC LIMIT $1`, [sanitizedLimit]);
+    ? await sql`
+        SELECT
+          id, subtotal, discount, gst, total,
+          table_number AS "tableNumber", customer_name AS "customerName",
+          customer_phone AS "customerPhone", note, timestamp,
+          payment_method AS "paymentMethod", payment_status AS "paymentStatus",
+          payment_json AS "paymentJson", receipt_settings_json AS "receiptSettingsJson"
+        FROM orders
+        WHERE is_deleted = false AND timestamp >= ${since}
+        ORDER BY timestamp DESC
+        LIMIT ${sanitizedLimit}
+      `
+    : await sql`
+        SELECT
+          id, subtotal, discount, gst, total,
+          table_number AS "tableNumber", customer_name AS "customerName",
+          customer_phone AS "customerPhone", note, timestamp,
+          payment_method AS "paymentMethod", payment_status AS "paymentStatus",
+          payment_json AS "paymentJson", receipt_settings_json AS "receiptSettingsJson"
+        FROM orders
+        WHERE is_deleted = false
+        ORDER BY timestamp DESC
+        LIMIT ${sanitizedLimit}
+      `;
 
   return hydrateOrders(rows);
 };
