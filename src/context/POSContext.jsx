@@ -112,7 +112,7 @@ export const POSProvider = ({ children }) => {
   const [settings, setSettingsState] = useState(createDefaultSettings);
   const [theme, setTheme] = useLocalStorage('fuego_theme', 'dark');
   const [activeView, setActiveView] = useState('POS');
-  const [parkedOrders, setParkedOrders] = useLocalStorage('fuego_parked_orders', []);
+  const [parkedOrders, _setParkedOrders] = useState([]);
   const [cart, setCart] = useState([]);
   const [draftOrderId, setDraftOrderId] = useState('');
   const [orderNote, setOrderNote] = useState('');
@@ -135,9 +135,8 @@ export const POSProvider = ({ children }) => {
 
     Promise.allSettled([
       apiJson('/menu'),
-      // Load the 500 most-recent orders — enough for the POS and recent history.
-      // The Finance page uses /finance/summary for accurate all-time totals.
-      apiJson('/orders?limit=300'),
+      // Load the 5000 most-recent orders to show complete history.
+      apiJson('/orders?limit=5000'),
       apiJson('/customers'),
       apiJson('/settings'),
       apiJson('/ledger-adjustments'),
@@ -173,6 +172,9 @@ export const POSProvider = ({ children }) => {
             ...previous,
             ...settingsResult.value,
           }));
+          if (settingsResult.value.fuego_parked_orders) {
+            _setParkedOrders(settingsResult.value.fuego_parked_orders);
+          }
         } else if (settingsResult.status === 'rejected') {
           console.error('Failed to load settings:', settingsResult.reason);
         }
@@ -230,6 +232,14 @@ export const POSProvider = ({ children }) => {
 
   const toggleTheme = () => {
     setTheme((previousTheme) => (previousTheme === 'dark' ? 'light' : 'dark'));
+  };
+
+  const setParkedOrders = (updater) => {
+    _setParkedOrders((prev) => {
+      const nextVal = typeof updater === 'function' ? updater(prev) : updater;
+      saveSettings({ fuego_parked_orders: nextVal }).catch(console.error);
+      return nextVal;
+    });
   };
 
   const addToCart = (item) => {
@@ -537,11 +547,15 @@ export const POSProvider = ({ children }) => {
   const saveSettings = async (newSettings) => {
     const previousSettings = settings;
     const sanitizedSettings = {
-      ...DEFAULT_SETTINGS,
+      ...previousSettings,
       ...newSettings,
-      gstEnabled: Boolean(newSettings.gstEnabled),
-      gstRate: toNumber(newSettings.gstRate, DEFAULT_SETTINGS.gstRate),
     };
+    if ('gstEnabled' in newSettings) {
+      sanitizedSettings.gstEnabled = Boolean(newSettings.gstEnabled);
+    }
+    if ('gstRate' in newSettings) {
+      sanitizedSettings.gstRate = toNumber(newSettings.gstRate, DEFAULT_SETTINGS.gstRate);
+    }
 
     // Optimistic update
     setSettingsState(sanitizedSettings);
