@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS = {
   paperWidth: '80mm (3")',
   pincode: '',
   pincodeEnabled: false,
+  settings_pin: '2713',
 };
 
 const DEFAULT_DISCOUNT = {

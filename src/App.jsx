@@ -56,7 +56,7 @@ function App() {
     if (activeView === 'Settings' && !isSettingsUnlocked) {
       return (
         <FinancesLock 
-          pincode="2713" 
+          pincode={settings?.settings_pin || "2713"} 
           onUnlock={() => setIsSettingsUnlocked(true)} 
           message="Administrator privileges required for system configuration."
         />

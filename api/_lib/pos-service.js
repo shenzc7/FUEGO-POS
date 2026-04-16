@@ -1,7 +1,15 @@
-import { readFile } from 'node:fs/promises';
-import process from 'node:process';
-import { neon } from '@neondatabase/serverless';
+// top-level Node imports removed for browser compatibility.
+// They are now dynamically imported inside getSql() and loadSeedData().
 import { createHttpError } from './http.js';
+import { 
+  toNumber, 
+  normalizeOrder, 
+  normalizePayment, 
+  normalizeMenuItem, 
+  normalizeLedgerAdjustment 
+} from '../../src/utils/normalize.js';
+
+export { toNumber, normalizeOrder, normalizePayment, normalizeMenuItem, normalizeLedgerAdjustment };
 
 const ORDER_SELECT = `
   SELECT
@@ -40,22 +48,45 @@ let readyPromise;
 let seedPromise;
 
 const getSql = () => {
-  const connectionString = process.env.DATABASE_URL;
+  if (typeof window !== 'undefined') {
+    throw new Error('getSql is not available in the browser.');
+  }
+
+  const connectionString = process?.env?.DATABASE_URL || (globalThis.process?.env?.DATABASE_URL);
 
   if (!connectionString) {
     throw createHttpError(500, 'DATABASE_URL is not configured.');
   }
 
   if (!sqlClient || sqlClientKey !== connectionString) {
-    sqlClient = neon(connectionString);
-    sqlClientKey = connectionString;
+    throw new Error('sqlClient must be initialized asynchronously in Serverless environment. Use getSqlAsync instead or ensures it was initialized.');
   }
 
   return sqlClient;
 };
 
+// Internal async helper for the backend to initialize the client
+const getSqlAsync = async () => {
+  if (typeof window !== 'undefined') return null;
+
+  const connectionString = process?.env?.DATABASE_URL || (globalThis.process?.env?.DATABASE_URL);
+  if (!connectionString) throw createHttpError(500, 'DATABASE_URL is not configured.');
+
+  if (!sqlClient || sqlClientKey !== connectionString) {
+    const { neon } = await import('@neondatabase/serverless');
+    sqlClient = neon(connectionString);
+    sqlClientKey = connectionString;
+  }
+  return sqlClient;
+};
+
 const loadSeedData = async () => {
+  if (typeof window !== 'undefined') {
+    throw new Error('loadSeedData is not available in the browser.');
+  }
+
   if (!seedPromise) {
+    const { readFile } = await import('node:fs/promises');
     seedPromise = readFile(new URL('../../data/fuego-seed.json', import.meta.url), 'utf8')
       .then((contents) => JSON.parse(contents))
       .catch(() => ({
@@ -85,116 +116,11 @@ const parseJson = (value, fallback = null) => {
   }
 };
 
-const toNumber = (value, fallback = 0) => {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-};
-
-const toOptionalText = (value, fallback = '') => {
-  if (value === null || value === undefined) {
-    return fallback;
-  }
-
-  const text = String(value).trim();
-  return text || fallback;
-};
-
-const toOptionalNullableText = (value) => {
-  const text = toOptionalText(value, '');
-  return text || null;
-};
-
 const toSafePositiveNumber = (value, fallback = 0) => Math.max(0, toNumber(value, fallback));
 
-const normalizePayment = (payment = {}, total = 0) => {
-  const method = toOptionalText(payment.method, toOptionalText(payment.method_legacy, 'Cash'));
-  const status = toOptionalText(payment.status, toOptionalText(payment.status_legacy, 'Paid'));
-  const totalValue = toSafePositiveNumber(total, 0);
-  const amountPaid =
-    payment.amountPaid === undefined
-      ? status === 'Paid'
-        ? totalValue
-        : 0
-      : toSafePositiveNumber(payment.amountPaid, 0);
-  const due =
-    payment.due === undefined
-      ? Math.max(0, totalValue - amountPaid)
-      : toSafePositiveNumber(payment.due, 0);
-  const change =
-    payment.change === undefined
-      ? Math.max(0, amountPaid - totalValue)
-      : toSafePositiveNumber(payment.change, 0);
-  const normalized = {
-    ...payment,
-    method: String(method || 'Cash'),
-    status: String(status || 'Paid'),
-    amountPaid,
-    due,
-    change,
-    tenderedAmount:
-      payment.tenderedAmount === undefined
-        ? undefined
-        : toSafePositiveNumber(payment.tenderedAmount, amountPaid),
-  };
+// Shared normalization functions are now imported from src/utils/normalize.js
 
-  normalized.method = method;
-  normalized.status = status;
-
-  if (Array.isArray(payment.splits)) {
-    normalized.splits = payment.splits.map((split) => ({
-      method: toOptionalText(split?.method, 'Cash'),
-      account: toOptionalText(split?.account, ''),
-      amount: toNumber(split?.amount, 0),
-    }));
-  }
-
-  if (payment.account !== undefined) {
-    normalized.account = toOptionalText(payment.account, '');
-  }
-
-  if (payment.settledAt) {
-    normalized.settledAt = payment.settledAt;
-  }
-
-  return normalized;
-};
-
-const getCollectedAmount = (payment = {}, total = Number.POSITIVE_INFINITY) => {
-  const amountPaid = Math.max(0, toNumber(payment.amountPaid, 0));
-  const change = Math.max(0, toNumber(payment.change, 0));
-  const cappedTotal = Number.isFinite(total) ? Math.max(0, toNumber(total, 0)) : amountPaid;
-
-  if (change > 0 && amountPaid > cappedTotal) {
-    return Math.max(0, amountPaid - change);
-  }
-
-  return amountPaid;
-};
-
-const paymentToAllocations = (payment = {}, total = 0) => {
-  if (payment.method === 'Split' && Array.isArray(payment.splits)) {
-    return payment.splits
-      .map((split) => ({
-        method: toOptionalText(split?.method, 'Cash'),
-        account: toOptionalText(split?.account, ''),
-        amount: Math.max(0, toNumber(split?.amount, 0)),
-      }))
-      .filter((split) => split.amount > 0);
-  }
-
-  const amount = getCollectedAmount(payment, total);
-  if (amount <= 0) {
-    return [];
-  }
-
-  return [
-    {
-      method: toOptionalText(payment.method, 'Cash'),
-      account: toOptionalText(payment.account, ''),
-      amount,
-    },
-  ];
-};
+// serializeOrder helper
 
 const mergePaymentAllocations = (allocations) => {
   const merged = new Map();
@@ -279,13 +205,8 @@ const normalizeReceiptSettings = (settings) => {
   };
 };
 
-const mapMenuItem = (row) => ({
-  id: row.id,
-  name: row.name,
-  price: toNumber(row.price, 0),
-  category: row.category,
-  active: Boolean(row.active),
-});
+// map utilities
+const mapMenuItem = normalizeMenuItem;
 
 const mapOrderItem = (row) => ({
   id: row.itemId,
@@ -296,15 +217,7 @@ const mapOrderItem = (row) => ({
   note: row.note || '',
 });
 
-const mapLedgerAdjustment = (row) => ({
-  id: row.id,
-  timestamp: row.timestamp,
-  account: row.account === 'Bank' ? 'Bank' : row.account === 'UPI' ? 'UPI' : 'Cash',
-  type: row.type === 'Outflow' ? 'Outflow' : 'Inflow',
-  amount: toNumber(row.amount, 0),
-  source: row.source || 'Manual adjustment',
-  note: row.note || '',
-});
+const mapLedgerAdjustment = normalizeLedgerAdjustment;
 
 const serializeOrder = (row, items) => {
   const total = toNumber(row.total, 0);
@@ -430,7 +343,8 @@ const toJsonValue = (value) => JSON.stringify(value ?? null);
 const isUniqueViolation = (error) => error?.code === '23505';
 
 const ensureSchema = async () => {
-  const sql = getSql();
+  const sql = await getSqlAsync();
+  if (!sql) return;
 
   await sql.query(`
     CREATE TABLE IF NOT EXISTS menu_items (
@@ -457,7 +371,8 @@ const ensureSchema = async () => {
       payment_method TEXT,
       payment_status TEXT,
       payment_json JSONB,
-      receipt_settings_json JSONB
+      receipt_settings_json JSONB,
+      is_deleted BOOLEAN NOT NULL DEFAULT FALSE
     )
   `);
 
@@ -492,6 +407,11 @@ const ensureSchema = async () => {
     )
   `);
 
+  await sql.query(`
+    ALTER TABLE orders 
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+
   await sql.query('CREATE INDEX IF NOT EXISTS idx_orders_timestamp ON orders(timestamp)');
   await sql.query('CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)');
   await sql.query(
@@ -500,7 +420,8 @@ const ensureSchema = async () => {
 };
 
 const seedDatabase = async () => {
-  const sql = getSql();
+  const sql = await getSqlAsync();
+  if (!sql) return;
   const [menuCountRows, orderCountRows, settingsCountRows, ledgerCountRows] = await sql.transaction((txn) => [
     txn`SELECT COUNT(*)::INT AS count FROM menu_items`,
     txn`SELECT COUNT(*)::INT AS count FROM orders`,
@@ -598,9 +519,16 @@ const seedDatabase = async () => {
 
   // Seed Settings if empty
   if (counts.settings === 0 && seed.settings && Object.keys(seed.settings).length > 0) {
+    const settingsToSeed = { ...seed.settings };
+    
+    // Ensure settings_pin is always seeded
+    if (!settingsToSeed.settings_pin) {
+      settingsToSeed.settings_pin = '2713';
+    }
+
     await sql.transaction((txn) => {
       const queries = [];
-      for (const [key, value] of Object.entries(seed.settings)) {
+      for (const [key, value] of Object.entries(settingsToSeed)) {
         queries.push(
           txn`
             INSERT INTO settings (key, value)
@@ -611,6 +539,12 @@ const seedDatabase = async () => {
       }
       return queries;
     });
+  } else if (counts.settings > 0) {
+    // If settings already exist, just ensure settings_pin is there
+    const [row] = await sql`SELECT 1 FROM settings WHERE key = 'settings_pin'`;
+    if (!row) {
+      await sql`INSERT INTO settings (key, value) VALUES ('settings_pin', '"2713"'::jsonb) ON CONFLICT DO NOTHING`;
+    }
   }
 
   // Seed Ledger if empty
@@ -675,8 +609,8 @@ const hydrateOrders = async (rows) => {
 
 
 export const getOrderById = async (id) => {
-  const sql = getSql();
-  const rows = await sql.query(`${ORDER_SELECT} WHERE id = $1`, [id]);
+  const sql = await getSqlAsync();
+  const rows = await sql.query(`${ORDER_SELECT} WHERE id = $1 AND is_deleted = false`, [id]);
 
   if (rows.length === 0) {
     return null;
@@ -768,11 +702,11 @@ export const listOrders = async ({ limit, since }) => {
   const sanitizedLimit =
     Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.min(Number(limit), 5000) : 500;
   const rows = since
-    ? await sql.query(`${ORDER_SELECT} WHERE timestamp >= $1 ORDER BY timestamp DESC LIMIT $2`, [
+    ? await sql.query(`${ORDER_SELECT} WHERE is_deleted = false AND timestamp >= $1 ORDER BY timestamp DESC LIMIT $2`, [
         since,
         sanitizedLimit,
       ])
-    : await sql.query(`${ORDER_SELECT} ORDER BY timestamp DESC LIMIT $1`, [sanitizedLimit]);
+    : await sql.query(`${ORDER_SELECT} WHERE is_deleted = false ORDER BY timestamp DESC LIMIT $1`, [sanitizedLimit]);
 
   return hydrateOrders(rows);
 };
@@ -783,14 +717,14 @@ export const getFinanceSummary = async () => {
     txn`
       SELECT payment_method AS method, COALESCE(SUM(total), 0) AS total
       FROM orders
-      WHERE payment_status = 'Paid' AND payment_method IN ('Cash', 'UPI', 'Bank')
+      WHERE is_deleted = false AND payment_status = 'Paid' AND payment_method IN ('Cash', 'UPI', 'Bank')
       GROUP BY payment_method
     `,
     txn`
       SELECT split->>'method' AS method, COALESCE(SUM((split->>'amount')::DOUBLE PRECISION), 0) AS total
       FROM orders
       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(payment_json->'splits', '[]'::jsonb)) AS split
-      WHERE payment_method = 'Split' AND payment_status = 'Paid'
+      WHERE is_deleted = false AND payment_method = 'Split' AND payment_status = 'Paid'
       GROUP BY split->>'method'
     `,
     txn`
@@ -994,8 +928,13 @@ export const updateOrder = async (id, payload = {}) => {
 };
 
 export const deleteOrder = async (id) => {
-  const sql = getSql();
-  const rows = await sql`DELETE FROM orders WHERE id = ${id} RETURNING id`;
+  const sql = await getSqlAsync();
+  const rows = await sql`
+    UPDATE orders 
+    SET is_deleted = true 
+    WHERE id = ${id} 
+    RETURNING id
+  `;
 
   if (rows.length === 0) {
     throw createHttpError(404, `Order "${id}" was not found.`);
