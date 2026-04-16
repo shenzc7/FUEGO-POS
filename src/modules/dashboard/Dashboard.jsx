@@ -76,14 +76,23 @@ export const Dashboard = () => {
 
   // Stats Logic
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const thisMonthStr = now.toISOString().substring(0, 7);
-  const thisYearStr = now.toISOString().substring(0, 4);
+  const getLocalYYYYMMDD = (d) => {
+    const date = new Date(d);
+    if (isNaN(date)) return '';
+    const yr = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, '0');
+    const da = String(date.getDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+  };
+  
+  const todayStr = getLocalYYYYMMDD(now);
+  const thisMonthStr = todayStr.substring(0, 7);
+  const thisYearStr = todayStr.substring(0, 4);
 
   const stats = useMemo(() => {
-    const todayOrders = (orders || []).filter(o => o.timestamp && o.timestamp.startsWith(todayStr));
-    const monthlyOrders = (orders || []).filter(o => o.timestamp && o.timestamp.startsWith(thisMonthStr));
-    const yearlyOrders = (orders || []).filter(o => o.timestamp && o.timestamp.startsWith(thisYearStr));
+    const todayOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp) === todayStr);
+    const monthlyOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp).startsWith(thisMonthStr));
+    const yearlyOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp).startsWith(thisYearStr));
     const todayFinancials = buildFinancialSummary(todayOrders, []);
     const lifetimeFinancials = buildFinancialSummary(orders || [], ledgerAdjustments || []);
 
@@ -114,7 +123,7 @@ export const Dashboard = () => {
   }, [orders, ledgerAdjustments, todayStr, thisMonthStr, thisYearStr]);
 
   const topItems = useMemo(() => {
-    const todayOrders = (orders || []).filter(o => o.timestamp && o.timestamp.startsWith(todayStr));
+    const todayOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp) === todayStr);
     const counts = {};
     todayOrders.forEach(order => {
       order.items.forEach(item => {
@@ -173,7 +182,7 @@ export const Dashboard = () => {
   const currentSalesValue = salesView === 'today' ? stats.totalSalesToday : salesView === 'monthly' ? stats.totalSalesMonthly : stats.totalSalesYearly;
   const currentSalesLabel = salesView === 'today' ? "Daily Sales" : salesView === 'monthly' ? "Monthly Sales" : "Annual Sales";
 
-  const todayOrders = (orders || []).filter(o => o.timestamp && o.timestamp.startsWith(todayStr));
+  const todayOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp) === todayStr);
 
   const hourlySales = useMemo(() => {
     // Build a full 24-slot map and populate from actual orders.
