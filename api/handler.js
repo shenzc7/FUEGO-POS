@@ -11,6 +11,7 @@ import {
   listLedgerAdjustments,
   listMenuItems,
   listOrders,
+  listCustomers,
   resetDatabase,
   saveSettings,
   updateMenuItem,
@@ -163,6 +164,13 @@ export default async function handler(request, response) {
       }
 
       return methodNotAllowed(response, ['GET', 'DELETE']);
+    }
+
+    if (resource === 'customers' && segments.length === 1) {
+      if (request.method !== 'GET') {
+        return methodNotAllowed(response, ['GET']);
+      }
+      return sendJson(response, await listCustomers());
     }
 
     if (resource === 'finance' && id === 'summary' && segments.length === 2) {

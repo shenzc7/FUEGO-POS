@@ -107,6 +107,7 @@ const apiJson = async (path, options = {}) => {
 export const POSProvider = ({ children }) => {
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [ledgerAdjustments, setLedgerAdjustments] = useState([]);
   const [settings, setSettingsState] = useState(createDefaultSettings);
   const [theme, setTheme] = useLocalStorage('fuego_theme', 'dark');
@@ -136,7 +137,8 @@ export const POSProvider = ({ children }) => {
       apiJson('/menu'),
       // Load the 500 most-recent orders — enough for the POS and recent history.
       // The Finance page uses /finance/summary for accurate all-time totals.
-      apiJson('/orders?limit=500'),
+      apiJson('/orders?limit=300'),
+      apiJson('/customers'),
       apiJson('/settings'),
       apiJson('/ledger-adjustments'),
       apiJson('/finance/summary'),
@@ -146,7 +148,7 @@ export const POSProvider = ({ children }) => {
       }
 
       startTransition(() => {
-        const [menuResult, ordersResult, settingsResult, adjustmentsResult, summaryResult] = results;
+        const [menuResult, ordersResult, customersResult, settingsResult, adjustmentsResult, summaryResult] = results;
 
         if (menuResult.status === 'fulfilled') {
           setMenuItems(sortMenuItems(menuResult.value.map(normalizeMenuItem)));
@@ -158,6 +160,12 @@ export const POSProvider = ({ children }) => {
           setOrders(ordersResult.value.map(normalizeOrder));
         } else {
           console.error('Failed to load orders:', ordersResult.reason);
+        }
+
+        if (customersResult.status === 'fulfilled') {
+          setCustomers(customersResult.value);
+        } else {
+          console.error('Failed to load customers:', customersResult.reason);
         }
 
         if (settingsResult.status === 'fulfilled' && settingsResult.value) {
@@ -371,6 +379,7 @@ export const POSProvider = ({ children }) => {
       setOrders((previousOrders) => [savedOrder, ...previousOrders]);
       clearCart();
       refreshFinanceSummary();
+      refreshCustomers();
       return savedOrder;
     } catch (error) {
       console.error('Failed to save order:', error);
@@ -424,6 +433,8 @@ export const POSProvider = ({ children }) => {
       });
 
       setOrders((previousOrders) => previousOrders.filter((order) => order.id !== orderId));
+      refreshCustomers();
+      refreshFinanceSummary();
 
       if (settlementOrder?.id === orderId) {
         setSettlementOrder(null);
@@ -560,6 +571,15 @@ export const POSProvider = ({ children }) => {
     }
   };
 
+  const refreshCustomers = async () => {
+    try {
+      const customersData = await apiJson('/customers');
+      if (customersData) setCustomers(customersData);
+    } catch (error) {
+      console.error('Failed to refresh customers:', error);
+    }
+  };
+
   const addLedgerAdjustment = async (adjustment) => {
     const payload = adjustment.type === 'Transfer' ? {
       ...adjustment,
@@ -686,6 +706,7 @@ export const POSProvider = ({ children }) => {
   const value = {
     menuItems,
     orders,
+    customers,
     ledgerAdjustments,
     settings,
     activeView,

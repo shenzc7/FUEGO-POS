@@ -5,43 +5,8 @@ import { exportToCSV } from '../../utils/exportUtils';
 import { motion } from 'framer-motion';
 
 export const Customers = () => {
-  const { orders } = usePOS();
+  const { customers: customerList } = usePOS();
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Extract unique customers from orders
-  const customerList = useMemo(() => {
-    const customers = {};
-    
-    // Sort orders by date descending to get the latest info and order count correctly
-    const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    sortedOrders.forEach(order => {
-      if (order.customerPhone || order.customerName) {
-        // Use phone as primary key if available, otherwise name
-        const key = order.customerPhone || order.customerName;
-        
-        if (!customers[key]) {
-          customers[key] = {
-            name: order.customerName || 'Anonymous',
-            phone: order.customerPhone || 'N/A',
-            totalSpent: 0,
-            orderCount: 0,
-            lastOrderDate: order.timestamp,
-            firstOrderDate: order.timestamp
-          };
-        }
-        
-        customers[key].totalSpent += order.total;
-        customers[key].orderCount += 1;
-        // Update first order date if this order is earlier
-        if (new Date(order.timestamp) < new Date(customers[key].firstOrderDate)) {
-          customers[key].firstOrderDate = order.timestamp;
-        }
-      }
-    });
-
-    return Object.values(customers);
-  }, [orders]);
 
   const filteredCustomers = customerList.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

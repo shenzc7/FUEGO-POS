@@ -697,6 +697,32 @@ export const deleteMenuItem = async (id) => {
   return { success: true };
 };
 
+export const listCustomers = async () => {
+  const sql = await getSqlAsync();
+  const rows = await sql`
+    SELECT 
+      customer_name AS name,
+      customer_phone AS phone,
+      SUM(total) AS "totalSpent",
+      COUNT(*) AS "orderCount",
+      MAX(timestamp) AS "lastOrderDate",
+      MIN(timestamp) AS "firstOrderDate"
+    FROM orders
+    WHERE is_deleted = false AND (customer_name != '' OR customer_phone != '')
+    GROUP BY customer_name, customer_phone
+    ORDER BY "lastOrderDate" DESC
+  `;
+
+  return rows.map((row) => ({
+    name: row.name || 'Anonymous',
+    phone: row.phone || 'N/A',
+    totalSpent: toNumber(row.totalSpent, 0),
+    orderCount: toNumber(row.orderCount, 0),
+    lastOrderDate: row.lastOrderDate,
+    firstOrderDate: row.firstOrderDate,
+  }));
+};
+
 export const listOrders = async ({ limit, since }) => {
   const sql = getSql();
   const sanitizedLimit =
