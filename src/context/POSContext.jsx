@@ -112,7 +112,7 @@ export const POSProvider = ({ children }) => {
   const [settings, setSettingsState] = useState(createDefaultSettings);
   const [theme, setTheme] = useLocalStorage('fuego_theme', 'dark');
   const [activeView, setActiveView] = useState('POS');
-  const [parkedOrders, _setParkedOrders] = useState([]);
+  const [parkedOrders, _setParkedOrders] = useLocalStorage('fuego_parked_orders', []);
   const [cart, setCart] = useState([]);
   const [draftOrderId, setDraftOrderId] = useState('');
   const [orderNote, setOrderNote] = useState('');
@@ -135,8 +135,8 @@ export const POSProvider = ({ children }) => {
 
     Promise.allSettled([
       apiJson('/menu'),
-      // Load the 5000 most-recent orders to show complete history.
-      apiJson('/orders?limit=5000'),
+      // Load the 1500 most-recent orders to show complete history and prevent payload limits.
+      apiJson('/orders?limit=1500'),
       apiJson('/customers'),
       apiJson('/settings'),
       apiJson('/ledger-adjustments'),
@@ -172,8 +172,24 @@ export const POSProvider = ({ children }) => {
             ...previous,
             ...settingsResult.value,
           }));
-          if (settingsResult.value.fuego_parked_orders) {
-            _setParkedOrders(settingsResult.value.fuego_parked_orders);
+          if (settingsResult.value.fuego_parked_orders || window.localStorage.getItem('fuego_parked_orders')) {
+            _setParkedOrders((localPrev) => {
+              const serverOrders = settingsResult.value.fuego_parked_orders || [];
+              const map = new Map();
+              if (Array.isArray(localPrev)) {
+                for (const o of localPrev) if (o && o.id) map.set(o.id, o);
+              }
+              if (Array.isArray(serverOrders)) {
+                for (const o of serverOrders) if (o && o.id) map.set(o.id, o);
+              }
+              const merged = Array.from(map.values());
+              if (merged.length > serverOrders.length) {
+                setTimeout(() => {
+                  apiJson('/settings', { method: 'POST', body: JSON.stringify({ fuego_parked_orders: merged }) }).catch(console.error);
+                }, 1000);
+              }
+              return merged;
+            });
           }
         } else if (settingsResult.status === 'rejected') {
           console.error('Failed to load settings:', settingsResult.reason);
