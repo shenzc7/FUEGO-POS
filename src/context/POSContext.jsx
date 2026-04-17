@@ -378,40 +378,56 @@ export const POSProvider = ({ children }) => {
   const currentOrderId = draftOrderId || generateOrderId();
 
   const completeOrder = async (paymentDetails) => {
-    const orderId = ensureDraftOrderId();
-    const newOrder = {
-      id: orderId,
-      items: [...cart],
-      subtotal,
-      discount: discountAmount,
-      gst,
-      total,
-      tableNumber,
-      customerName,
-      customerPhone,
-      note: orderNote,
-      payment: paymentDetails,
-      receiptSettings: buildReceiptSnapshot(settings, DEFAULT_SETTINGS),
-      timestamp: new Date().toISOString(),
-    };
+    let currentAttemptId = ensureDraftOrderId();
+    
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    try {
-      const response = await apiJson('/orders', {
-        method: 'POST',
-        body: JSON.stringify(newOrder),
-      });
+    while (attempts < maxAttempts) {
+      const newOrder = {
+        id: currentAttemptId,
+        items: [...cart],
+        subtotal,
+        discount: discountAmount,
+        gst,
+        total,
+        tableNumber,
+        customerName,
+        customerPhone,
+        note: orderNote,
+        payment: paymentDetails,
+        receiptSettings: buildReceiptSnapshot(settings, DEFAULT_SETTINGS),
+        timestamp: new Date().toISOString(),
+      };
 
-      const savedOrder = normalizeOrder(response.order);
-      setOrders((previousOrders) => [savedOrder, ...previousOrders]);
-      clearCart();
-      refreshFinanceSummary();
-      refreshCustomers();
-      return savedOrder;
-    } catch (error) {
-      console.error('Failed to save order:', error);
-      window.alert(error.message || 'Error saving order to the local database.');
-      return null;
+      try {
+        const response = await apiJson('/orders', {
+          method: 'POST',
+          body: JSON.stringify(newOrder),
+        });
+
+        const savedOrder = normalizeOrder(response.order);
+        setOrders((previousOrders) => [savedOrder, ...previousOrders]);
+        clearCart();
+        refreshFinanceSummary();
+        refreshCustomers();
+        return savedOrder;
+      } catch (error) {
+        if (error.status === 409 && attempts < maxAttempts - 1) {
+          attempts++;
+          console.warn(`Order ID ${currentAttemptId} already exists, regenerating and retrying...`);
+          currentAttemptId = generateOrderId([...getReservedOrderIds(), currentAttemptId]);
+          setDraftOrderId(currentAttemptId);
+          continue;
+        }
+
+        console.error('Failed to save order:', error);
+        window.alert(error.message || 'Error saving order to the local database.');
+        return null;
+      }
     }
+    
+    return null;
   };
 
   const updateOrder = async (orderId, updatedFields) => {
