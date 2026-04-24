@@ -1,32 +1,71 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
+// Safely read + validate the persisted user from localStorage.
+// Any corruption (old format, bad JSON) returns null and cleans up.
+const readPersistedUser = () => {
+  try {
+    const raw = localStorage.getItem('fuego_user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Must be an object with a valid role — reject legacy "true" string sessions
+    if (parsed && typeof parsed === 'object' && (parsed.role === 'admin' || parsed.role === 'owner')) {
+      return parsed;
+    }
+    // Stale / corrupt — wipe both old and new keys
+    localStorage.removeItem('fuego_user');
+    localStorage.removeItem('fuego_authenticated');
+    return null;
+  } catch {
+    // JSON.parse failed — wipe and recover
+    localStorage.removeItem('fuego_user');
+    localStorage.removeItem('fuego_authenticated');
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('fuego_authenticated') === 'true';
-  });
+  const [user, setUser] = useState(readPersistedUser);
+
+  const isAuthenticated = !!user;
 
   const login = (username, password) => {
-    // Safest approach: Use Environment Variables with a fallback during transition
-    const validUsername = import.meta.env.VITE_AUTH_USERNAME || 'admin';
-    const validPassword = import.meta.env.VITE_AUTH_PASSWORD || 'fuego2024';
+    if (!username || !password) return false;
 
-    if (username === validUsername && password === validPassword) {
-      setIsAuthenticated(true);
-      localStorage.setItem('fuego_authenticated', 'true');
+    // Admin credentials (from env vars with safe fallbacks)
+    const adminUser = import.meta.env.VITE_AUTH_USERNAME || 'admin';
+    const adminPass = import.meta.env.VITE_AUTH_PASSWORD || 'fuego2024';
+
+    // Owner credentials
+    const ownerUser = 'owner';
+    const ownerPass = 'owner2713';
+
+    if (username === adminUser && password === adminPass) {
+      const userData = { username: adminUser, role: 'admin' };
+      setUser(userData);
+      localStorage.setItem('fuego_user', JSON.stringify(userData));
       return true;
     }
+
+    if (username === ownerUser && password === ownerPass) {
+      const userData = { username: ownerUser, role: 'owner' };
+      setUser(userData);
+      localStorage.setItem('fuego_user', JSON.stringify(userData));
+      return true;
+    }
+
     return false;
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('fuego_authenticated');
+    setUser(null);
+    localStorage.removeItem('fuego_user');
+    localStorage.removeItem('fuego_authenticated'); // clean up legacy key too
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -14,9 +14,10 @@ import { PaymentModal } from './components/PaymentModal';
 import { FinancesLock } from './components/FinancesLock';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
+import { OwnerInsights } from './modules/owner/OwnerInsights';
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { 
     activeView, 
     printingData, 
@@ -42,6 +43,12 @@ function App() {
 
   const renderView = () => {
     const isLockActive = settings?.pincodeEnabled && settings?.pincode?.length === 4;
+
+    // If owner is logged in, prioritize insights and bypass their own locks
+    if (user?.role === 'owner') {
+      if (activeView === 'Settings') return <Settings />;
+      return <OwnerInsights />;
+    }
 
     if (activeView === 'Accounts' && isLockActive && !isFinancesUnlocked) {
       return (
@@ -71,6 +78,7 @@ function App() {
       case 'Settings': return <Settings />;
       case 'Accounts': return <Finances />;
       case 'Customers': return <Customers />;
+      case 'Insights': return <OwnerInsights />;
       default: return <POSScreen />;
     }
   };
@@ -82,7 +90,7 @@ function App() {
   return (
     <>
       <div className="flex bg-fuego-dark min-h-screen text-[var(--fuego-text)] no-print" data-theme={theme}>
-        <Sidebar />
+        {user?.role !== 'owner' && <Sidebar />}
         <main className="flex-1 overflow-hidden relative">
           {renderView()}
         </main>

@@ -10,7 +10,8 @@ import {
   Users,
   Sun,
   Moon,
-  LogOut
+  LogOut,
+  PieChart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { clsx } from 'clsx';
@@ -40,49 +41,65 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, className }) => (
 
 export const Sidebar = () => {
   const { activeView, setActiveView, theme, toggleTheme } = usePOS();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  const isOwner = user?.role === 'owner';
+  const isAdmin = user?.role === 'admin';
 
   return (
     <aside className="w-16 md:w-24 bg-[var(--fuego-sidebar)] border-r border-[var(--fuego-border)] flex flex-col items-center py-6 md:py-8 h-screen sticky top-0 no-print transition-all duration-300 z-50 shrink-0">
       <div className="mb-8 md:mb-10 text-fuego-orange font-logo text-2xl md:text-3xl italic font-black">F</div>
       
       <div className="flex-1 w-full space-y-1 md:space-y-2 px-0">
-        <SidebarItem 
-          icon={ShoppingCart} 
-          label="Terminal" 
-          active={activeView === 'POS'} 
-          onClick={() => setActiveView('POS')} 
-        />
-        <SidebarItem 
-          icon={BarChart2} 
-          label="Analytics" 
-          active={activeView === 'Dashboard'} 
-          onClick={() => setActiveView('Dashboard')} 
-        />
-        <SidebarItem 
-          icon={History} 
-          label="History" 
-          active={activeView === 'History'} 
-          onClick={() => setActiveView('History')} 
-        />
-        <SidebarItem 
-          icon={Utensils} 
-          label="Menu" 
-          active={activeView === 'Menu'} 
-          onClick={() => setActiveView('Menu')} 
-        />
-        <SidebarItem 
-          icon={Users} 
-          label="Customers" 
-          active={activeView === 'Customers'} 
-          onClick={() => setActiveView('Customers')} 
-        />
-        <SidebarItem 
-          icon={Landmark} 
-          label="Finances" 
-          active={activeView === 'Accounts'} 
-          onClick={() => setActiveView('Accounts')} 
-        />
+        {!isOwner && (
+          <>
+            <SidebarItem 
+              icon={ShoppingCart} 
+              label="Terminal" 
+              active={activeView === 'POS'} 
+              onClick={() => setActiveView('POS')} 
+            />
+            <SidebarItem 
+              icon={BarChart2} 
+              label="Analytics" 
+              active={activeView === 'Dashboard'} 
+              onClick={() => setActiveView('Dashboard')} 
+            />
+            <SidebarItem 
+              icon={History} 
+              label="History" 
+              active={activeView === 'History'} 
+              onClick={() => setActiveView('History')} 
+            />
+            <SidebarItem 
+              icon={Utensils} 
+              label="Menu" 
+              active={activeView === 'Menu'} 
+              onClick={() => setActiveView('Menu')} 
+            />
+            <SidebarItem 
+              icon={Users} 
+              label="Customers" 
+              active={activeView === 'Customers'} 
+              onClick={() => setActiveView('Customers')} 
+            />
+            <SidebarItem 
+              icon={Landmark} 
+              label="Finances" 
+              active={activeView === 'Accounts'} 
+              onClick={() => setActiveView('Accounts')} 
+            />
+          </>
+        )}
+        
+        {(isOwner || isAdmin) && (
+          <SidebarItem 
+            icon={PieChart} 
+            label="Insights" 
+            active={activeView === 'Insights'} 
+            onClick={() => setActiveView('Insights')} 
+          />
+        )}
       </div>
 
       <div className="mt-auto flex flex-col items-center w-full gap-2 px-0 pb-4">
