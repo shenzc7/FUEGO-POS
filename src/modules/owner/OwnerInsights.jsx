@@ -40,15 +40,29 @@ export const OwnerInsights = () => {
   const [selectedDate, setSelectedDate] = useState(getLocalYYYYMMDD(new Date()));
 
   const summary = useMemo(() => {
-    // Stress test: Filter using local timezone comparison instead of UTC string prefix
     const dayOrders = (orders || []).filter(o => o.timestamp && getLocalYYYYMMDD(o.timestamp) === selectedDate);
     const financial = buildFinancialSummary(dayOrders, []);
     
+    // Calculate top items
+    const itemCounts = {};
+    dayOrders.forEach(order => {
+      order.items?.forEach(item => {
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + (item.quantity || 1);
+      });
+    });
+    
+    const topItems = Object.entries(itemCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([name, count]) => ({ name, count }));
+
     return {
       orderCount: dayOrders.length,
       total: dayOrders.reduce((sum, o) => sum + (o.total || 0), 0),
       cashTotal: financial.cashTotal,
       upiTotal: financial.upiTotal,
+      topItems,
+      orders: dayOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     };
   }, [orders, selectedDate]);
 
@@ -178,9 +192,61 @@ export const OwnerInsights = () => {
                   </div>
                </div>
             </div>
+
+            {summary.orderCount > 0 && (
+              <div className="mt-12 space-y-12">
+                {/* Top Sellers */}
+                <section>
+                  <div className="flex items-center gap-4 mb-6 px-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 whitespace-nowrap">Top Selling</h3>
+                    <div className="h-[1px] flex-1 bg-white/5" />
+                  </div>
+                  <div className="grid gap-3">
+                    {summary.topItems.map((item, idx) => (
+                      <div key={item.name} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-lg bg-fuego-orange/10 flex items-center justify-center text-fuego-orange font-bold text-xs">
+                            {idx + 1}
+                          </div>
+                          <span className="text-sm font-bold">{item.name}</span>
+                        </div>
+                        <span className="text-xs font-black font-mono text-fuego-orange">{item.count} Sold</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Transaction Breakdown */}
+                <section>
+                  <div className="flex items-center gap-4 mb-6 px-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 whitespace-nowrap">Bill Breakdown</h3>
+                    <div className="h-[1px] flex-1 bg-white/5" />
+                  </div>
+                  <div className="grid gap-3">
+                    {summary.orders.map((order) => (
+                      <div key={order.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">{order.id}</p>
+                          <p className="text-sm font-bold">{formatCurrency(order.total)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
+                            order.payment?.method === 'UPI' ? "bg-blue-500/10 text-blue-500" : 
+                            order.payment?.method === 'Cash' ? "bg-emerald-500/10 text-emerald-500" :
+                            "bg-purple-500/10 text-purple-500"
+                          )}>
+                            {order.payment?.method || 'Split'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
-
       </div>
     </div>
   );
