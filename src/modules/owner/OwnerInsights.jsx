@@ -3,10 +3,8 @@ import { usePOS } from '../../context/POSContext';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Calendar as CalendarIcon, 
-  TrendingUp, 
   Wallet, 
   Smartphone, 
-  Target,
   BarChart3,
   Flame,
   LogOut,
@@ -183,47 +181,6 @@ export const OwnerInsights = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Quick Insights Section */}
-        <div className="mt-12 space-y-4 px-2">
-           <div className="flex items-center gap-4 mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 whitespace-nowrap">Performance Logic</h3>
-              <div className="h-[1px] flex-1 bg-white/5" />
-           </div>
-           
-           <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-fuego-orange/5 flex items-center justify-center text-fuego-orange/40">
-                    <Target size={20} />
-                 </div>
-                 <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Daily Goal</p>
-                    <p className="text-xs font-bold">₹15,000 Milestone</p>
-                 </div>
-              </div>
-              <div className="text-right">
-                 <p className="text-xs font-black font-mono text-fuego-orange">
-                   {Math.min(100, Math.round((summary.total / 15000) * 100))}%
-                 </p>
-              </div>
-           </div>
-
-           <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-emerald-500/5 flex items-center justify-center text-emerald-500/40">
-                    <TrendingUp size={20} />
-                 </div>
-                 <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Efficiency</p>
-                    <p className="text-xs font-bold">Avg Check Value</p>
-                 </div>
-              </div>
-              <div className="text-right">
-                 <p className="text-xs font-black font-mono text-emerald-500">
-                   {summary.orderCount > 0 ? formatCurrency(Math.round(summary.total / summary.orderCount)) : '₹0'}
-                 </p>
-              </div>
-           </div>
-        </div>
       </div>
     </div>
   );
